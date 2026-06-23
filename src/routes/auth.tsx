@@ -10,7 +10,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,6 +32,14 @@ function AuthPage() {
         if (error) throw error;
         toast.success("Welcome back");
         navigate({ to: "/dashboard", replace: true });
+      } else if (mode === "forgot") {
+        if (!email) throw new Error("Enter your email");
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + "/reset-password",
+        });
+        if (error) throw error;
+        toast.success("Password reset email sent. Check your inbox (and spam).");
+        setMode("signin");
       } else {
         if (!fullName.trim()) throw new Error("Please enter your full name");
         if (password.length < 6) throw new Error("Password must be at least 6 characters");

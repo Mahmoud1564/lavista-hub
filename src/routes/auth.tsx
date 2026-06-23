@@ -71,7 +71,9 @@ function AuthPage() {
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground font-bold text-xl mb-3">L</div>
           <h1 className="text-2xl font-semibold">Lavista Admin</h1>
-          <p className="text-sm text-muted-foreground mt-1">{mode === "signin" ? "Sign in to continue" : "Create staff account"}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {mode === "signin" ? "Sign in to continue" : mode === "signup" ? "Create staff account" : "Reset your password"}
+          </p>
         </div>
         <form onSubmit={submit} className="space-y-4">
           {mode === "signup" && (

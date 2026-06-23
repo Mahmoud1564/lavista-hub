@@ -11,8 +11,10 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -31,13 +33,21 @@ function AuthPage() {
         toast.success("Welcome back");
         navigate({ to: "/dashboard", replace: true });
       } else {
+        if (!fullName.trim()) throw new Error("Please enter your full name");
+        if (password.length < 6) throw new Error("Password must be at least 6 characters");
+        if (password !== confirmPassword) throw new Error("Passwords do not match");
         const { error } = await supabase.auth.signUp({
-          email, password,
-          options: { emailRedirectTo: window.location.origin + "/dashboard" },
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.origin + "/dashboard",
+            data: { full_name: fullName.trim() },
+          },
         });
         if (error) throw error;
-        toast.success("Account created. An admin must grant you access before you can sign in.");
+        toast.success("Account created. Check your email to confirm, then ask an admin to grant you access.");
         setMode("signin");
+        setConfirmPassword("");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Authentication failed";
@@ -56,6 +66,13 @@ function AuthPage() {
           <p className="text-sm text-muted-foreground mt-1">{mode === "signin" ? "Sign in to continue" : "Create staff account"}</p>
         </div>
         <form onSubmit={submit} className="space-y-4">
+          {mode === "signup" && (
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Full name</label>
+              <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
+                className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Email</label>
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
@@ -66,12 +83,19 @@ function AuthPage() {
             <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
           </div>
+          {mode === "signup" && (
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Confirm password</label>
+              <input type="password" required minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+          )}
           <button disabled={loading} type="submit"
             className="w-full py-2 rounded-md bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50">
             {loading ? "..." : mode === "signin" ? "Sign in" : "Sign up"}
           </button>
         </form>
-        <button onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+        <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setConfirmPassword(""); }}
           className="w-full text-center text-sm text-muted-foreground hover:text-foreground mt-4">
           {mode === "signin" ? "Need an account? Sign up" : "Have an account? Sign in"}
         </button>

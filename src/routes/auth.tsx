@@ -88,11 +88,13 @@ function AuthPage() {
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Password</label>
-            <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
-          </div>
+          {mode !== "forgot" && (
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Password</label>
+              <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            </div>
+          )}
           {mode === "signup" && (
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Confirm password</label>
@@ -102,13 +104,20 @@ function AuthPage() {
           )}
           <button disabled={loading} type="submit"
             className="w-full py-2 rounded-md bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50">
-            {loading ? "..." : mode === "signin" ? "Sign in" : "Sign up"}
+            {loading ? "..." : mode === "signin" ? "Sign in" : mode === "signup" ? "Sign up" : "Send reset link"}
           </button>
         </form>
-        <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setConfirmPassword(""); }}
-          className="w-full text-center text-sm text-muted-foreground hover:text-foreground mt-4">
-          {mode === "signin" ? "Need an account? Sign up" : "Have an account? Sign in"}
-        </button>
+        <div className="mt-4 space-y-2 text-center text-sm">
+          {mode === "signin" && (
+            <button onClick={() => setMode("forgot")} className="block w-full text-muted-foreground hover:text-foreground">
+              Forgot password?
+            </button>
+          )}
+          <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setConfirmPassword(""); }}
+            className="block w-full text-muted-foreground hover:text-foreground">
+            {mode === "signin" ? "Need an account? Sign up" : mode === "signup" ? "Have an account? Sign in" : "Back to sign in"}
+          </button>
+        </div>
       </div>
     </div>
   );

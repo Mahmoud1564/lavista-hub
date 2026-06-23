@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedReviewsRouteImport } from './routes/_authenticated/reviews'
+import { Route as AuthenticatedMediaRouteImport } from './routes/_authenticated/media'
 import { Route as AuthenticatedFaqRouteImport } from './routes/_authenticated/faq'
 import { Route as AuthenticatedExperiencesRouteImport } from './routes/_authenticated/experiences'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -42,6 +43,11 @@ const AuthenticatedRoomsRoute = AuthenticatedRoomsRouteImport.update({
 const AuthenticatedReviewsRoute = AuthenticatedReviewsRouteImport.update({
   id: '/reviews',
   path: '/reviews',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMediaRoute = AuthenticatedMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFaqRoute = AuthenticatedFaqRouteImport.update({
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/experiences': typeof AuthenticatedExperiencesRoute
   '/faq': typeof AuthenticatedFaqRoute
+  '/media': typeof AuthenticatedMediaRoute
   '/reviews': typeof AuthenticatedReviewsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
 }
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/experiences': typeof AuthenticatedExperiencesRoute
   '/faq': typeof AuthenticatedFaqRoute
+  '/media': typeof AuthenticatedMediaRoute
   '/reviews': typeof AuthenticatedReviewsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
 }
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/experiences': typeof AuthenticatedExperiencesRoute
   '/_authenticated/faq': typeof AuthenticatedFaqRoute
+  '/_authenticated/media': typeof AuthenticatedMediaRoute
   '/_authenticated/reviews': typeof AuthenticatedReviewsRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
 }
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/experiences'
     | '/faq'
+    | '/media'
     | '/reviews'
     | '/rooms'
   fileRoutesByTo: FileRoutesByTo
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/experiences'
     | '/faq'
+    | '/media'
     | '/reviews'
     | '/rooms'
   id:
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/experiences'
     | '/_authenticated/faq'
+    | '/_authenticated/media'
     | '/_authenticated/reviews'
     | '/_authenticated/rooms'
   fileRoutesById: FileRoutesById
@@ -186,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReviewsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/media': {
+      id: '/_authenticated/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof AuthenticatedMediaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/faq': {
       id: '/_authenticated/faq'
       path: '/faq'
@@ -230,6 +249,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExperiencesRoute: typeof AuthenticatedExperiencesRoute
   AuthenticatedFaqRoute: typeof AuthenticatedFaqRoute
+  AuthenticatedMediaRoute: typeof AuthenticatedMediaRoute
   AuthenticatedReviewsRoute: typeof AuthenticatedReviewsRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
 }
@@ -240,6 +260,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExperiencesRoute: AuthenticatedExperiencesRoute,
   AuthenticatedFaqRoute: AuthenticatedFaqRoute,
+  AuthenticatedMediaRoute: AuthenticatedMediaRoute,
   AuthenticatedReviewsRoute: AuthenticatedReviewsRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
 }

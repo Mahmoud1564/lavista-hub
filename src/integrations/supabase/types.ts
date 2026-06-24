@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      about_images: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          image_url: string
+          sort_order: number
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_url: string
+          sort_order?: number
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           check_in: string
@@ -68,12 +92,45 @@ export type Database = {
           },
         ]
       }
+      experience_dates: {
+        Row: {
+          created_at: string
+          date: string
+          experience_id: string
+          id: string
+          is_available: boolean
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          experience_id: string
+          id?: string
+          is_available?: boolean
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          experience_id?: string
+          id?: string
+          is_available?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "experience_dates_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       experience_images: {
         Row: {
           created_at: string
           experience_id: string
           id: string
           image_url: string
+          is_thumbnail: boolean
           sort_order: number
         }
         Insert: {
@@ -81,6 +138,7 @@ export type Database = {
           experience_id: string
           id?: string
           image_url: string
+          is_thumbnail?: boolean
           sort_order?: number
         }
         Update: {
@@ -88,6 +146,7 @@ export type Database = {
           experience_id?: string
           id?: string
           image_url?: string
+          is_thumbnail?: boolean
           sort_order?: number
         }
         Relationships: [
@@ -104,24 +163,36 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          duration: string | null
           id: string
           is_active: boolean
+          meeting_point: string | null
+          pickup_info: string | null
+          thumbnail_url: string | null
           title: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           description?: string | null
+          duration?: string | null
           id?: string
           is_active?: boolean
+          meeting_point?: string | null
+          pickup_info?: string | null
+          thumbnail_url?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           description?: string | null
+          duration?: string | null
           id?: string
           is_active?: boolean
+          meeting_point?: string | null
+          pickup_info?: string | null
+          thumbnail_url?: string | null
           title?: string
           updated_at?: string
         }
@@ -178,6 +249,69 @@ export type Database = {
           name?: string
           phone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      page_views: {
+        Row: {
+          created_at: string
+          id: number
+          path: string
+          referrer: string | null
+          session_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          path: string
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          path?: string
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      pending_approvals: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          email: string
+          full_name: string | null
+          id: string
+          requested_role: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+          requested_role?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          requested_role?: string
+          status?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -243,11 +377,47 @@ export type Database = {
           },
         ]
       }
+      room_blocks: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          reason: string | null
+          room_id: string
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          reason?: string | null
+          room_id: string
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          reason?: string | null
+          room_id?: string
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_blocks_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_images: {
         Row: {
           created_at: string
           id: string
           image_url: string
+          is_thumbnail: boolean
           room_id: string
           sort_order: number
         }
@@ -255,6 +425,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url: string
+          is_thumbnail?: boolean
           room_id: string
           sort_order?: number
         }
@@ -262,6 +433,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string
+          is_thumbnail?: boolean
           room_id?: string
           sort_order?: number
         }
@@ -277,33 +449,39 @@ export type Database = {
       }
       rooms: {
         Row: {
-          capacity: number
+          beds: number
           created_at: string
           description: string | null
+          guests: number
           id: string
           is_active: boolean
           name: string
           price: number
+          thumbnail_url: string | null
           updated_at: string
         }
         Insert: {
-          capacity?: number
+          beds?: number
           created_at?: string
           description?: string | null
+          guests?: number
           id?: string
           is_active?: boolean
           name: string
           price?: number
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Update: {
-          capacity?: number
+          beds?: number
           created_at?: string
           description?: string | null
+          guests?: number
           id?: string
           is_active?: boolean
           name?: string
           price?: number
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -382,7 +560,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_room_available: {
+        Args: {
+          _check_in: string
+          _check_out: string
+          _exclude_booking?: string
+          _room_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "staff"

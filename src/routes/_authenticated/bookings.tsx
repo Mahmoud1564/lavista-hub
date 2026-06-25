@@ -172,7 +172,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
     try {
       const { data: avail, error: availErr } = await supabase.rpc("is_room_available", {
         _room_id: roomId, _check_in: checkIn, _check_out: checkOut,
-        _exclude_booking: booking?.id ?? null,
+        _exclude_booking: booking?.id ?? undefined,
       });
       if (availErr) throw availErr;
       if (avail === false) {

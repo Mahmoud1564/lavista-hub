@@ -4,12 +4,16 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, Button, Input, Textarea, Label, Drawer, Empty, Badge } from "@/components/admin/ui";
-import { Plus, Trash2, Upload, X } from "lucide-react";
+import { Plus, Trash2, Upload, X, Star } from "lucide-react";
 import { uploadFile, deleteFile, getSignedUrls } from "@/lib/storage";
 
 const BUCKET = "experience-images";
 
-type Experience = { id: string; title: string; description: string | null; is_active: boolean };
+type Experience = {
+  id: string; title: string; description: string | null; is_active: boolean;
+  duration: string | null; meeting_point: string | null; pickup_info: string | null;
+  thumbnail_url: string | null;
+};
 
 export const Route = createFileRoute("/_authenticated/experiences")({
   component: ExpPage,
@@ -57,7 +61,8 @@ function ExpPage() {
                 <h3 className="font-semibold">{e.title}</h3>
                 <Badge variant={e.is_active ? "success" : "muted"}>{e.is_active ? "Active" : "Inactive"}</Badge>
               </div>
-              <p className="text-xs text-muted-foreground line-clamp-3 mb-4 min-h-[3rem]">{e.description ?? "No description"}</p>
+              <p className="text-xs text-muted-foreground line-clamp-3 mb-2 min-h-[3rem]">{e.description ?? "No description"}</p>
+              {e.duration && <p className="text-xs text-primary mb-3">⏱ {e.duration}</p>}
               <div className="flex gap-2">
                 <Button size="sm" variant="outline" onClick={() => setEditing(e)}>Edit</Button>
                 <Button size="sm" variant="ghost" onClick={() => toggle(e)}>{e.is_active ? "Hide" : "Show"}</Button>
@@ -78,28 +83,47 @@ function ExpPage() {
   );
 }
 
+type ExpImg = { id: string; image_url: string; signed: string | null; is_thumbnail: boolean };
+type ExpDate = { id: string; date: string; is_available: boolean };
+
 function Form({ item, onSaved }: { item?: Experience; onSaved: () => void }) {
   const isEdit = !!item;
   const [title, setTitle] = useState(item?.title ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
+  const [duration, setDuration] = useState(item?.duration ?? "");
+  const [meetingPoint, setMeetingPoint] = useState(item?.meeting_point ?? "");
+  const [pickupInfo, setPickupInfo] = useState(item?.pickup_info ?? "");
   const [isActive, setIsActive] = useState(item?.is_active ?? true);
   const [saving, setSaving] = useState(false);
-  const [images, setImages] = useState<{ id: string; image_url: string; signed: string | null }[]>([]);
+  const [images, setImages] = useState<ExpImg[]>([]);
+  const [dates, setDates] = useState<ExpDate[]>([]);
+  const [newDate, setNewDate] = useState("");
 
   useEffect(() => {
     if (!item) return;
-    supabase.from("experience_images").select("*").eq("experience_id", item.id).then(async ({ data }) => {
-      const paths = (data ?? []).map((i) => i.image_url);
+    (async () => {
+      const [{ data: imgs }, { data: ds }] = await Promise.all([
+        supabase.from("experience_images").select("*").eq("experience_id", item.id).order("sort_order"),
+        supabase.from("experience_dates").select("*").eq("experience_id", item.id).order("date"),
+      ]);
+      const paths = (imgs ?? []).map((i) => i.image_url);
       const signed = await getSignedUrls(BUCKET, paths);
-      setImages((data ?? []).map((i) => ({ id: i.id, image_url: i.image_url, signed: signed[i.image_url] ?? null })));
-    });
+      setImages((imgs ?? []).map((i) => ({
+        id: i.id, image_url: i.image_url, signed: signed[i.image_url] ?? null,
+        is_thumbnail: i.is_thumbnail ?? false,
+      })));
+      setDates((ds ?? []) as ExpDate[]);
+    })();
   }, [item]);
 
   async function save() {
     if (!title) return toast.error("Title required");
     setSaving(true);
     try {
-      const payload = { title, description: description || null, is_active: isActive };
+      const payload = {
+        title, description: description || null, is_active: isActive,
+        duration: duration || null, meeting_point: meetingPoint || null, pickup_info: pickupInfo || null,
+      };
       if (isEdit) {
         const { error } = await supabase.from("experiences").update(payload).eq("id", item!.id);
         if (error) throw error;
@@ -115,13 +139,15 @@ function Form({ item, onSaved }: { item?: Experience; onSaved: () => void }) {
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     if (!item) return toast.error("Save first");
+    let nextOrder = images.length;
     for (const f of Array.from(e.target.files ?? [])) {
       try {
         const path = await uploadFile(BUCKET, f);
-        const { data, error } = await supabase.from("experience_images").insert({ experience_id: item.id, image_url: path }).select("*").single();
+        const { data, error } = await supabase.from("experience_images")
+          .insert({ experience_id: item.id, image_url: path, sort_order: nextOrder++ }).select("*").single();
         if (error) throw error;
         const signed = await getSignedUrls(BUCKET, [path]);
-        setImages((p) => [...p, { id: data.id, image_url: path, signed: signed[path] ?? null }]);
+        setImages((p) => [...p, { id: data.id, image_url: path, signed: signed[path] ?? null, is_thumbnail: false }]);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : "Upload failed");
       }
@@ -129,37 +155,90 @@ function Form({ item, onSaved }: { item?: Experience; onSaved: () => void }) {
     e.target.value = "";
   }
 
-  async function removeImage(img: { id: string; image_url: string }) {
+  async function removeImage(img: ExpImg) {
     await supabase.from("experience_images").delete().eq("id", img.id);
     await deleteFile(BUCKET, img.image_url);
     setImages((p) => p.filter((i) => i.id !== img.id));
   }
 
+  async function setThumb(img: ExpImg) {
+    if (!item) return;
+    await supabase.from("experience_images").update({ is_thumbnail: false }).eq("experience_id", item.id);
+    await supabase.from("experience_images").update({ is_thumbnail: true }).eq("id", img.id);
+    await supabase.from("experiences").update({ thumbnail_url: img.image_url }).eq("id", item.id);
+    setImages((p) => p.map((i) => ({ ...i, is_thumbnail: i.id === img.id })));
+  }
+
+  async function addDate() {
+    if (!item || !newDate) return;
+    const { data, error } = await supabase.from("experience_dates")
+      .insert({ experience_id: item.id, date: newDate, is_available: true }).select("*").single();
+    if (error) { toast.error(error.message); return; }
+    setDates((p) => [...p, data as ExpDate].sort((a, b) => a.date.localeCompare(b.date)));
+    setNewDate("");
+  }
+
+  async function toggleDate(d: ExpDate) {
+    await supabase.from("experience_dates").update({ is_available: !d.is_available }).eq("id", d.id);
+    setDates((p) => p.map((x) => x.id === d.id ? { ...x, is_available: !x.is_available } : x));
+  }
+
+  async function removeDate(d: ExpDate) {
+    await supabase.from("experience_dates").delete().eq("id", d.id);
+    setDates((p) => p.filter((x) => x.id !== d.id));
+  }
+
   return (
     <div className="space-y-4">
       <div><Label>Title *</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-      <div><Label>Description</Label><Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+      <div><Label>Description</Label><Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+      <div><Label>Duration (e.g. 2 hours)</Label><Input value={duration} onChange={(e) => setDuration(e.target.value)} /></div>
+      <div><Label>Meeting Point</Label><Input value={meetingPoint} onChange={(e) => setMeetingPoint(e.target.value)} /></div>
+      <div><Label>Pickup Information</Label><Textarea rows={2} value={pickupInfo} onChange={(e) => setPickupInfo(e.target.value)} /></div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
         Active
       </label>
 
       {isEdit && (
-        <div className="pt-4 border-t border-border">
-          <Label>Images</Label>
-          <div className="grid grid-cols-3 gap-2">
-            {images.map((img) => (
-              <div key={img.id} className="relative aspect-square bg-muted rounded-md overflow-hidden group">
-                {img.signed && <img src={img.signed} alt="" className="w-full h-full object-cover" />}
-                <button onClick={() => removeImage(img)} className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100"><X className="w-3 h-3" /></button>
-              </div>
-            ))}
-            <label className="aspect-square border-2 border-dashed border-border rounded-md flex flex-col items-center justify-center text-xs text-muted-foreground cursor-pointer hover:bg-accent">
-              <Upload className="w-4 h-4 mb-1" /> Add
-              <input type="file" accept="image/*" multiple onChange={onUpload} className="hidden" />
-            </label>
+        <>
+          <div className="pt-4 border-t border-border">
+            <Label>Images (click star to set thumbnail)</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {images.map((img) => (
+                <div key={img.id} className={`relative aspect-square bg-muted rounded-md overflow-hidden group ring-2 ${img.is_thumbnail ? "ring-primary" : "ring-transparent"}`}>
+                  {img.signed && <img src={img.signed} alt="" className="w-full h-full object-cover" />}
+                  <button onClick={() => setThumb(img)} className={`absolute top-1 left-1 rounded-full p-1 ${img.is_thumbnail ? "bg-primary text-primary-foreground" : "bg-background/70 opacity-0 group-hover:opacity-100"}`}>
+                    <Star className="w-3 h-3" />
+                  </button>
+                  <button onClick={() => removeImage(img)} className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100"><X className="w-3 h-3" /></button>
+                </div>
+              ))}
+              <label className="aspect-square border-2 border-dashed border-border rounded-md flex flex-col items-center justify-center text-xs text-muted-foreground cursor-pointer hover:bg-accent">
+                <Upload className="w-4 h-4 mb-1" /> Add
+                <input type="file" accept="image/*" multiple onChange={onUpload} className="hidden" />
+              </label>
+            </div>
           </div>
-        </div>
+
+          <div className="pt-4 border-t border-border">
+            <Label>Available Dates</Label>
+            <div className="flex gap-2 mb-2">
+              <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+              <Button variant="outline" onClick={addDate}>Add</Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {dates.map((d) => (
+                <span key={d.id} className={`inline-flex items-center gap-2 px-2 py-1 rounded-md text-xs ${d.is_available ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground line-through"}`}>
+                  {d.date}
+                  <button onClick={() => toggleDate(d)} className="opacity-70 hover:opacity-100" title="Toggle availability">⇅</button>
+                  <button onClick={() => removeDate(d)} className="opacity-70 hover:opacity-100 hover:text-destructive"><X className="w-3 h-3" /></button>
+                </span>
+              ))}
+              {dates.length === 0 && <span className="text-xs text-muted-foreground">No dates set</span>}
+            </div>
+          </div>
+        </>
       )}
 
       <div className="pt-4 border-t border-border">

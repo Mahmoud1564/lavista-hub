@@ -4,9 +4,11 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
 
@@ -63,10 +65,30 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function PageViewTracker() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let sid = sessionStorage.getItem("lavista_sid");
+    if (!sid) {
+      sid = crypto.randomUUID();
+      sessionStorage.setItem("lavista_sid", sid);
+    }
+    supabase.from("page_views").insert({
+      path: pathname,
+      session_id: sid,
+      referrer: document.referrer || null,
+      user_agent: navigator.userAgent.slice(0, 255),
+    }).then(() => {}, () => {});
+  }, [pathname]);
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
+      <PageViewTracker />
       <Outlet />
       <Toaster theme="dark" position="top-right" richColors />
     </QueryClientProvider>

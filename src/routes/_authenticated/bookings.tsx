@@ -170,6 +170,16 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
     }
     setSaving(true);
     try {
+      const { data: avail, error: availErr } = await supabase.rpc("is_room_available", {
+        _room_id: roomId, _check_in: checkIn, _check_out: checkOut,
+        _exclude_booking: booking?.id ?? null,
+      });
+      if (availErr) throw availErr;
+      if (avail === false) {
+        toast.error("Room is not available for those dates (booked or blocked).");
+        setSaving(false);
+        return;
+      }
       let gid = booking?.guest_id;
       if (isEdit && booking?.guest) {
         await supabase.from("guests").update({ name: guestName, phone: guestPhone || null, email: guestEmail || null }).eq("id", booking.guest.id);

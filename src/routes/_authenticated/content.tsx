@@ -127,7 +127,7 @@ function AboutImage({ row, onChange }: { row: ContentRow | null; onChange: () =>
     try {
       if (path) await deleteFile(ABOUT_BUCKET, path);
       const newPath = await uploadFile(ABOUT_BUCKET, file);
-      const merged = { ...(row?.value ?? {}), image_url: newPath };
+      const merged = { ...(row?.value ?? {}), image_url: newPath } as unknown as Record<string, string>;
       const { error } = await supabase.from("website_content").upsert({ key: "about", value: merged }, { onConflict: "key" });
       if (error) throw error;
       toast.success("About image updated");

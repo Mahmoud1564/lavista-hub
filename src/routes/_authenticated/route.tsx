@@ -53,8 +53,8 @@ function AuthedShell() {
         <div className="max-w-md text-center bg-card border border-border rounded-xl p-8">
           <h1 className="text-xl font-semibold mb-2">Access pending</h1>
           <p className="text-sm text-muted-foreground mb-4">
-            Your account ({user?.email}) is not authorized for the admin dashboard.
-            An administrator must grant you the <code className="text-primary">admin</code> or <code className="text-primary">staff</code> role.
+            Your account ({user?.email}) is awaiting approval.
+            An existing administrator must approve your signup to grant access.
           </p>
           <div className="text-xs text-muted-foreground bg-muted rounded-md p-3 text-left">
             <p className="mb-1 font-mono">Your user id:</p>

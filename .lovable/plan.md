@@ -1,93 +1,63 @@
+# Admin Dashboard Overhaul Plan
 
-# Lavista Admin — Full Enhancement Pass
+Six interconnected changes. I'll implement them in this order so database changes land first, then UI follows.
 
-## 1. Database changes (one migration)
+## 1. Database migrations (single migration)
 
-New / changed tables:
+- **`booking_rooms` join table** for multi-room bookings:
+  - `booking_id`, `room_id`, `check_in`, `check_out`, `price_per_night`
+  - Keep legacy `bookings.room_id` nullable for now; backfill existing rows into `booking_rooms`.
+  - Update `is_room_available` RPC to also check `booking_rooms`.
+- **`room_pricing` table** for seasonal/per-date prices:
+  - `room_id`, `start_date`, `end_date`, `price_per_night`, `label` (e.g. "High season"), `priority` (specific dates win over seasons).
+- **Predefined amenities**: keep `room_amenities` table but UI uses a fixed list + custom string. No schema change needed (already a name field).
+- **Drop staff role**: convert any existing staff users to admin, update approval trigger default to `admin`, remove staff from UI.
+- **About image**: add `about_image_url` to `settings` table (single value) — replaces the `about_images` gallery for the admin side. Keep `about_images` table for now (non-breaking).
+- Grants + RLS for new tables (admins manage, anon reads pricing for public site).
 
-- `rooms`: rename `capacity` → `guests`, add `beds INT NOT NULL DEFAULT 1`, add `thumbnail_url TEXT`.
-- `room_images`: add `sort_order INT DEFAULT 0`, add `is_thumbnail BOOL DEFAULT false`.
-- `experiences`: add `duration TEXT`, `meeting_point TEXT`, `pickup_info TEXT`, `thumbnail_url TEXT`.
-- `experience_dates` (new): `experience_id`, `date`, `is_available`.
-- `experience_images`: add `sort_order`, `is_thumbnail`.
-- `room_blocks` (new): `room_id`, `start_date`, `end_date`, `reason` — manual blocks for the calendar.
-- `about_images` (new): `image_url`, `caption`, `sort_order`.
-- `page_views` (new): `path`, `session_id`, `created_at` — visitor tracking.
-- `pending_approvals` (new): `user_id`, `email`, `full_name`, `requested_role`, `status` (`pending|approved|rejected`), `decided_by`, `decided_at`.
-- `settings`: ensure `logo_url`, `contact_email`, `contact_phone`, `address` exist (canonical location for contact info).
-- `website_content`: prune unused sections (Hero CTA, Features, Footer, duplicate Contact). About section keeps text + links to `about_images`.
+## 2. Inline image uploads on Create forms
 
-All new tables get GRANTs + RLS:
-- Admin/staff full access via `has_role`.
-- `anon` SELECT on public-facing tables (`about_images`, `experience_dates`, `room_blocks` read for booking availability, `settings` logo/contact).
-- `anon` INSERT on `page_views` (visitor tracking).
-- `pending_approvals`: only admins read/update; users can insert their own row.
+Rooms, Experiences, Reviews, About:
+- Refactor create dialogs to collect `File[]` in local state before insert.
+- On submit: insert the row, then upload each file to storage using the new row id, then insert image rows. Show progress.
+- Rooms create: allow marking one uploaded file as thumbnail before save.
 
-Trigger: on `auth.users` insert → create `pending_approvals` row using metadata (`full_name`, `requested_role`).
+## 3. Multi-room bookings
 
-## 2. Admin approval flow + emails
+- Booking create/edit form: replace single room select with multi-select list. Each selected room gets its own check-in/out (default to booking dates) and nightly price.
+- Booking list: show all room names per booking.
+- Availability check runs per room via updated RPC.
 
-- Auth gate stays as-is (no role = "Access pending" screen).
-- New `/settings` tab "Pending approvals": list pending users, Approve (with role: Admin/Staff) or Reject. Approve = insert into `user_roles` + mark approval row approved.
-- New signup → server function enqueues an email to every existing admin with the new user's name, email, requested role, and approve link to `/settings`.
-- Email setup: scaffold Lovable Emails infrastructure + one app-email template `new-user-approval-request`. Requires email domain — I'll open the setup dialog if one isn't configured yet.
+## 4. Amenities picker
 
-## 3. Rooms module
+- New `src/lib/amenities.ts` constant with the 23 predefined amenities listed in the request.
+- Replace text input in room form with checkbox grid + "Add custom" text field.
 
-- Admin form: rename Capacity → Guests, add Beds field.
-- Multi-image upload (already partly there); add: drag handle for ordering, "Set as thumbnail" star button. Thumbnail mirrors to `rooms.thumbnail_url` for fast public reads.
-- Amenities: keep current chip UI, add per-amenity icon picker (optional, default none).
-- Public site reads `rooms.thumbnail_url` for cards, falls back to first image.
+## 5. About image management
 
-## 4. Experiences module
+- In `settings.tsx` "Content" or new "About" card: single image uploader with preview, replace, delete. Writes to `settings.about_image_url` and uploads to `branding` bucket under `about/`.
+- Public site reads from `settings.about_image_url`.
 
-- Same multi-image + thumbnail treatment as rooms.
-- New fields: Duration, Meeting/Pickup info.
-- Available Dates: simple list editor (add date, remove date, mark available/unavailable) writing to `experience_dates`.
+## 6. Availability Calendar page
 
-## 5. Availability calendar (Airbnb-style)
+New sidebar entry `/calendar`:
+- Month grid showing every room as a row (Airbnb-style timeline) OR a room filter + single-room month view (simpler, ships faster). **I'll build the room-filter + month view** since it matches the existing per-room calendar and is genuinely usable on smaller screens.
+- Each day cell shows: status (available/booked/blocked) and price (from `room_pricing` resolved by priority, falling back to `rooms.price_per_night`).
+- Click a day → popover with: Block/unblock, Set price for date, Set seasonal range.
+- Drag/select range → bulk block or bulk price.
+- Auto-reflects bookings (already does via query).
 
-- New page `/rooms/$id/calendar` and a "Calendar" button on each room card.
-- Month view grid. Each cell shows status:
-  - **Booked** (from `bookings` with `status='confirmed'` or `'pending'`) — red, not clickable.
-  - **Blocked** (from `room_blocks`) — gray, click to unblock.
-  - **Available** — green, click-drag to block a range.
-- Booking creation form validates against both sources via a `is_room_available(room_id, start, end)` SQL function; same function is used by the public booking flow to prevent double bookings.
+The old "Calendar" button on the rooms list links here with the room preselected.
 
-## 6. Logo management
+## Technical notes
 
-- Settings page: upload control writes to `settings.logo_url` (stored in a new public `branding` bucket). Public site nav reads it.
+- All storage uploads go through existing `src/lib/storage.ts` helpers + signed URL hook.
+- Public website tables (`rooms`, `experiences`, `settings`, `about_images`, `room_pricing`) get `TO anon SELECT` policies so the public site can read without auth.
+- No new server functions needed — direct supabase client calls with RLS suffice.
 
-## 7. Website content cleanup
+## Out of scope (will note to user)
 
-- Remove from `/content` admin page: Hero CTA button text, Features, Footer, Contact (now Settings-only).
-- Keep: Hero title/subtitle/image, About text, SEO meta.
-- Public site updated to read contact info from `settings` everywhere.
+- Migrating existing single-room bookings UI to fully drop `bookings.room_id` — kept as nullable for backwards compat; new bookings use `booking_rooms` only.
+- Drag-to-select range on calendar (will ship click-start + click-end range selection, same as current per-room calendar).
 
-## 8. About gallery
-
-- New `about_images` table + drag-to-reorder UI in `/content` under About.
-- Public About section renders a responsive masonry/grid gallery from this table.
-
-## 9. Dashboard analytics
-
-- Tiny tracker in `__root.tsx` POSTs `{ path, session_id }` to a public server route on each route change. `session_id` stored in `sessionStorage` (no cookies, no PII).
-- Dashboard adds three cards: Visitors today / this month / all-time, plus a 30-day bar chart (using `recharts`, already in shadcn ecosystem).
-
-## 10. Public site
-All public-facing pages updated to consume the new schema (thumbnails, gallery, calendar-gated booking, settings-driven contact + logo).
-
----
-
-### Order of execution
-1. Run the migration (you'll approve it).
-2. Scaffold email infrastructure + auth approval template.
-3. Write all admin UI changes + public site changes + tracker in one batch.
-4. Tell you what to verify.
-
-### What you'll need to do
-- Approve the migration when prompted.
-- If no email sender domain exists, complete the email domain setup dialog when it appears — then I continue automatically.
-- After build, test signup → admin gets email → approve from Settings.
-
-Reply **go** to execute, or tell me what to change.
+Ready to proceed on approval.

@@ -81,7 +81,7 @@ function SectionCard({
     setSaving(true);
     try {
       // Preserve existing keys (like image_url) when saving text fields
-      const merged = { ...(row?.value ?? {}), ...values };
+      const merged = { ...(row?.value ?? {}), ...values } as Record<string, unknown>;
       const { error } = await supabase.from("website_content").upsert({ key: section.key, value: merged }, { onConflict: "key" });
       if (error) throw error;
       toast.success(`${section.title} saved`);

@@ -147,22 +147,7 @@ function AuthPage() {
                 <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
                   className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">I am a</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["staff", "admin"] as RequestedRole[]).map((r) => (
-                    <button key={r} type="button" onClick={() => setRequestedRole(r)}
-                      className={`py-2 rounded-md border text-sm capitalize transition ${
-                        requestedRole === r
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-input border-border text-foreground hover:border-ring"
-                      }`}>
-                      {r}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">An existing admin must approve your access after sign-up.</p>
-              </div>
+              <p className="text-[11px] text-muted-foreground -mt-1">An existing admin must approve your access after sign-up. All approved users get full administrator access.</p>
             </>
           )}
           <div>

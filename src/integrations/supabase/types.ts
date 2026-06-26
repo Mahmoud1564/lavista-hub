@@ -38,6 +38,45 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_rooms: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          price_per_night: number | null
+          room_id: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          price_per_night?: number | null
+          room_id: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          price_per_night?: number | null
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_rooms_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_rooms_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           check_in: string
@@ -440,6 +479,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "room_images_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      room_pricing: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          label: string | null
+          price_per_night: number
+          priority: number
+          room_id: string
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          label?: string | null
+          price_per_night: number
+          priority?: number
+          room_id: string
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          label?: string | null
+          price_per_night?: number
+          priority?: number
+          room_id?: string
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_pricing_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"

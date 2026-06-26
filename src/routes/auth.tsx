@@ -80,12 +80,12 @@ function AuthPage() {
           password,
           options: {
             emailRedirectTo: window.location.origin + "/dashboard",
-            data: { full_name: fullName.trim(), requested_role: requestedRole },
+            data: { full_name: fullName.trim() },
           },
         });
         if (error) throw error;
         setLastSignupEmail(email);
-        toast.success(`Account created as ${requestedRole}. Check your email to confirm. An admin must approve your role.`);
+        toast.success("Account created. Check your email to confirm. An admin must approve your access.");
         setMode("signin");
         setConfirmPassword("");
       }

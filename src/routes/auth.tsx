@@ -9,7 +9,6 @@ export const Route = createFileRoute("/auth")({
 });
 
 type Mode = "signin" | "signup" | "forgot";
-type RequestedRole = "admin" | "staff";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -18,7 +17,6 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [requestedRole, setRequestedRole] = useState<RequestedRole>("staff");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [lastSignupEmail, setLastSignupEmail] = useState("");

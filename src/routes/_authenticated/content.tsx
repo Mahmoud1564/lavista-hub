@@ -142,7 +142,7 @@ function AboutImage({ row, onChange }: { row: ContentRow | null; onChange: () =>
     setBusy(true);
     try {
       await deleteFile(ABOUT_BUCKET, path);
-      const merged = { ...(row?.value ?? {}), image_url: "" };
+      const merged = { ...(row?.value ?? {}), image_url: "" } as unknown as Record<string, string>;
       await supabase.from("website_content").upsert({ key: "about", value: merged }, { onConflict: "key" });
       toast.success("About image removed");
       onChange();

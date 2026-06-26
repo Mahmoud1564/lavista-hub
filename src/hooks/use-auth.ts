@@ -30,8 +30,9 @@ export function useAuth() {
     });
   }, [user]);
 
-  const isStaff = roles.includes("admin") || roles.includes("staff");
+  // All approved users are admins now (staff role removed).
   const isAdmin = roles.includes("admin");
+  const isStaff = isAdmin; // back-compat for any callers
 
   return { session, user, roles, isStaff, isAdmin, loading };
 }

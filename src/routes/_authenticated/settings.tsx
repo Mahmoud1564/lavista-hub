@@ -172,14 +172,14 @@ function PendingApprovals() {
 
   const pending = approvals.filter((a) => a.status === "pending");
 
-  async function approve(a: Approval, role: "admin" | "staff") {
-    const { error: roleErr } = await supabase.from("user_roles").insert({ user_id: a.user_id, role });
+  async function approve(a: Approval) {
+    const { error: roleErr } = await supabase.from("user_roles").insert({ user_id: a.user_id, role: "admin" });
     if (roleErr && !roleErr.message.includes("duplicate")) { toast.error(roleErr.message); return; }
     const { error } = await supabase.from("pending_approvals").update({
       status: "approved", decided_at: new Date().toISOString(),
     }).eq("id", a.id);
     if (error) { toast.error(error.message); return; }
-    toast.success(`${a.email} approved as ${role}`);
+    toast.success(`${a.email} approved as admin`);
     qc.invalidateQueries({ queryKey: ["pending-approvals"] });
   }
 
@@ -199,6 +199,7 @@ function PendingApprovals() {
         <h3 className="font-semibold">Pending Approvals</h3>
         {pending.length > 0 && <Badge variant="warning">{pending.length} waiting</Badge>}
       </div>
+      <p className="text-[11px] text-muted-foreground mb-3">All approved users get full administrator access.</p>
       {pending.length === 0 ? (
         <p className="text-xs text-muted-foreground">No pending signups. New signups appear here for approval.</p>
       ) : (
@@ -208,12 +209,10 @@ function PendingApprovals() {
               <div className="min-w-0">
                 <div className="font-medium text-sm">{a.full_name ?? "(no name)"}</div>
                 <div className="text-xs text-muted-foreground truncate">{a.email}</div>
-                <div className="text-[10px] text-muted-foreground mt-1">Requested: <span className="text-primary">{a.requested_role}</span></div>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => approve(a, "staff")}><Check className="w-3 h-3" /> Staff</Button>
-                <Button size="sm" variant="outline" onClick={() => approve(a, "admin")}><Check className="w-3 h-3" /> Admin</Button>
-                <Button size="sm" variant="ghost" onClick={() => reject(a)}><XIcon className="w-3 h-3" /></Button>
+                <Button size="sm" onClick={() => approve(a)}><Check className="w-3 h-3" /> Approve as admin</Button>
+                <Button size="sm" variant="ghost" onClick={() => reject(a)}><XIcon className="w-3 h-3" /> Reject</Button>
               </div>
             </div>
           ))}
@@ -247,7 +246,7 @@ function RolesAdmin() {
 
   return (
     <Card className="p-5">
-      <h3 className="font-semibold mb-4">Granted Roles</h3>
+      <h3 className="font-semibold mb-4">Granted Admins</h3>
       <div className="space-y-2">
         {roles.map((r) => (
           <div key={r.id} className="flex items-center justify-between bg-muted/40 rounded-md px-3 py-2 text-sm">
@@ -258,7 +257,7 @@ function RolesAdmin() {
             </div>
           </div>
         ))}
-        {roles.length === 0 && <p className="text-xs text-muted-foreground">No roles granted yet.</p>}
+        {roles.length === 0 && <p className="text-xs text-muted-foreground">No admins granted yet.</p>}
       </div>
     </Card>
   );

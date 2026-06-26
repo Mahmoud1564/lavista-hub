@@ -21,8 +21,8 @@ import { Route as AuthenticatedFaqRouteImport } from './routes/_authenticated/fa
 import { Route as AuthenticatedExperiencesRouteImport } from './routes/_authenticated/experiences'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedContentRouteImport } from './routes/_authenticated/content'
+import { Route as AuthenticatedCalendarRouteImport } from './routes/_authenticated/calendar'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
-import { Route as AuthenticatedRoomsIdCalendarRouteImport } from './routes/_authenticated/rooms.$id.calendar'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -84,47 +84,46 @@ const AuthenticatedContentRoute = AuthenticatedContentRouteImport.update({
   path: '/content',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCalendarRoute = AuthenticatedCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
   id: '/bookings',
   path: '/bookings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedRoomsIdCalendarRoute =
-  AuthenticatedRoomsIdCalendarRouteImport.update({
-    id: '/$id/calendar',
-    path: '/$id/calendar',
-    getParentRoute: () => AuthenticatedRoomsRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/bookings': typeof AuthenticatedBookingsRoute
+  '/calendar': typeof AuthenticatedCalendarRoute
   '/content': typeof AuthenticatedContentRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/experiences': typeof AuthenticatedExperiencesRoute
   '/faq': typeof AuthenticatedFaqRoute
   '/media': typeof AuthenticatedMediaRoute
   '/reviews': typeof AuthenticatedReviewsRoute
-  '/rooms': typeof AuthenticatedRoomsRouteWithChildren
+  '/rooms': typeof AuthenticatedRoomsRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/rooms/$id/calendar': typeof AuthenticatedRoomsIdCalendarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/bookings': typeof AuthenticatedBookingsRoute
+  '/calendar': typeof AuthenticatedCalendarRoute
   '/content': typeof AuthenticatedContentRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/experiences': typeof AuthenticatedExperiencesRoute
   '/faq': typeof AuthenticatedFaqRoute
   '/media': typeof AuthenticatedMediaRoute
   '/reviews': typeof AuthenticatedReviewsRoute
-  '/rooms': typeof AuthenticatedRoomsRouteWithChildren
+  '/rooms': typeof AuthenticatedRoomsRoute
   '/settings': typeof AuthenticatedSettingsRoute
-  '/rooms/$id/calendar': typeof AuthenticatedRoomsIdCalendarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -133,15 +132,15 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
+  '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/content': typeof AuthenticatedContentRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/experiences': typeof AuthenticatedExperiencesRoute
   '/_authenticated/faq': typeof AuthenticatedFaqRoute
   '/_authenticated/media': typeof AuthenticatedMediaRoute
   '/_authenticated/reviews': typeof AuthenticatedReviewsRoute
-  '/_authenticated/rooms': typeof AuthenticatedRoomsRouteWithChildren
+  '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
-  '/_authenticated/rooms/$id/calendar': typeof AuthenticatedRoomsIdCalendarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -150,6 +149,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/bookings'
+    | '/calendar'
     | '/content'
     | '/dashboard'
     | '/experiences'
@@ -158,13 +158,13 @@ export interface FileRouteTypes {
     | '/reviews'
     | '/rooms'
     | '/settings'
-    | '/rooms/$id/calendar'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/reset-password'
     | '/bookings'
+    | '/calendar'
     | '/content'
     | '/dashboard'
     | '/experiences'
@@ -173,7 +173,6 @@ export interface FileRouteTypes {
     | '/reviews'
     | '/rooms'
     | '/settings'
-    | '/rooms/$id/calendar'
   id:
     | '__root__'
     | '/'
@@ -181,6 +180,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/_authenticated/bookings'
+    | '/_authenticated/calendar'
     | '/_authenticated/content'
     | '/_authenticated/dashboard'
     | '/_authenticated/experiences'
@@ -189,7 +189,6 @@ export interface FileRouteTypes {
     | '/_authenticated/reviews'
     | '/_authenticated/rooms'
     | '/_authenticated/settings'
-    | '/_authenticated/rooms/$id/calendar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -285,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContentRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/calendar': {
+      id: '/_authenticated/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AuthenticatedCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/bookings': {
       id: '/_authenticated/bookings'
       path: '/bookings'
@@ -292,48 +298,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/rooms/$id/calendar': {
-      id: '/_authenticated/rooms/$id/calendar'
-      path: '/$id/calendar'
-      fullPath: '/rooms/$id/calendar'
-      preLoaderRoute: typeof AuthenticatedRoomsIdCalendarRouteImport
-      parentRoute: typeof AuthenticatedRoomsRoute
-    }
   }
 }
 
-interface AuthenticatedRoomsRouteChildren {
-  AuthenticatedRoomsIdCalendarRoute: typeof AuthenticatedRoomsIdCalendarRoute
-}
-
-const AuthenticatedRoomsRouteChildren: AuthenticatedRoomsRouteChildren = {
-  AuthenticatedRoomsIdCalendarRoute: AuthenticatedRoomsIdCalendarRoute,
-}
-
-const AuthenticatedRoomsRouteWithChildren =
-  AuthenticatedRoomsRoute._addFileChildren(AuthenticatedRoomsRouteChildren)
-
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
+  AuthenticatedCalendarRoute: typeof AuthenticatedCalendarRoute
   AuthenticatedContentRoute: typeof AuthenticatedContentRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExperiencesRoute: typeof AuthenticatedExperiencesRoute
   AuthenticatedFaqRoute: typeof AuthenticatedFaqRoute
   AuthenticatedMediaRoute: typeof AuthenticatedMediaRoute
   AuthenticatedReviewsRoute: typeof AuthenticatedReviewsRoute
-  AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRouteWithChildren
+  AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
+  AuthenticatedCalendarRoute: AuthenticatedCalendarRoute,
   AuthenticatedContentRoute: AuthenticatedContentRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExperiencesRoute: AuthenticatedExperiencesRoute,
   AuthenticatedFaqRoute: AuthenticatedFaqRoute,
   AuthenticatedMediaRoute: AuthenticatedMediaRoute,
   AuthenticatedReviewsRoute: AuthenticatedReviewsRoute,
-  AuthenticatedRoomsRoute: AuthenticatedRoomsRouteWithChildren,
+  AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
 }
 

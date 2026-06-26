@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,12 +11,15 @@ export const Route = createFileRoute("/_authenticated/bookings")({
   component: BookingsPage,
 });
 
+type BookedRoom = { id: string; room_id: string; price_per_night: number | null; room: { id: string; name: string; price: number } | null };
+
 type BookingRow = {
   id: string; check_in: string; check_out: string; status: string;
   notes: string | null; total_price: number | null; created_at: string;
   guest_id: string | null; room_id: string | null;
   guest: { id: string; name: string; phone: string | null; email: string | null } | null;
   room: { id: string; name: string; price: number } | null;
+  booking_rooms: BookedRoom[];
 };
 
 function BookingsPage() {
@@ -31,7 +34,7 @@ function BookingsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, check_in, check_out, status, notes, total_price, created_at, guest_id, room_id, guest:guests(id, name, phone, email), room:rooms(id, name, price)")
+        .select("id, check_in, check_out, status, notes, total_price, created_at, guest_id, room_id, guest:guests(id, name, phone, email), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as BookingRow[];
@@ -52,10 +55,16 @@ function BookingsPage() {
     });
   }, [bookings, search, statusFilter]);
 
+  function roomsLabel(b: BookingRow) {
+    const names = b.booking_rooms?.map((br) => br.room?.name).filter(Boolean) as string[];
+    if (names && names.length) return names.join(", ");
+    return b.room?.name ?? "—";
+  }
+
   function exportCsv() {
-    const headers = ["id", "guest", "phone", "room", "check_in", "check_out", "status", "total"];
+    const headers = ["id", "guest", "phone", "rooms", "check_in", "check_out", "status", "total"];
     const rows = filtered.map((b) => [
-      b.id, b.guest?.name ?? "", b.guest?.phone ?? "", b.room?.name ?? "",
+      b.id, b.guest?.name ?? "", b.guest?.phone ?? "", roomsLabel(b),
       b.check_in, b.check_out, b.status, b.total_price ?? "",
     ]);
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -93,7 +102,7 @@ function BookingsPage() {
               <thead className="text-left text-xs text-muted-foreground border-b border-border">
                 <tr>
                   <th className="px-4 py-3 font-medium">Guest</th>
-                  <th className="px-4 py-3 font-medium">Room</th>
+                  <th className="px-4 py-3 font-medium">Rooms</th>
                   <th className="px-4 py-3 font-medium">Check-in</th>
                   <th className="px-4 py-3 font-medium">Check-out</th>
                   <th className="px-4 py-3 font-medium">Status</th>
@@ -107,7 +116,7 @@ function BookingsPage() {
                       <div className="font-medium">{b.guest?.name ?? "—"}</div>
                       <div className="text-xs text-muted-foreground">{b.guest?.phone ?? ""}</div>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{b.room?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{roomsLabel(b)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_in), "MMM d, yyyy")}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_out), "MMM d, yyyy")}</td>
                     <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
@@ -143,7 +152,12 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   const [guestName, setGuestName] = useState(booking?.guest?.name ?? "");
   const [guestPhone, setGuestPhone] = useState(booking?.guest?.phone ?? "");
   const [guestEmail, setGuestEmail] = useState(booking?.guest?.email ?? "");
-  const [roomId, setRoomId] = useState(booking?.room_id ?? "");
+  const initialRoomIds = useMemo(() => {
+    if (booking?.booking_rooms?.length) return booking.booking_rooms.map((br) => br.room_id);
+    if (booking?.room_id) return [booking.room_id];
+    return [] as string[];
+  }, [booking]);
+  const [roomIds, setRoomIds] = useState<string[]>(initialRoomIds);
   const [checkIn, setCheckIn] = useState(booking?.check_in ?? "");
   const [checkOut, setCheckOut] = useState(booking?.check_out ?? "");
   const [status, setStatus] = useState(booking?.status ?? "upcoming");
@@ -155,13 +169,25 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
     queryKey: ["rooms-min"],
     queryFn: async () => {
       const { data } = await supabase.from("rooms").select("id, name, price").order("name");
-      return data ?? [];
+      return (data ?? []) as { id: string; name: string; price: number }[];
     },
   });
 
+  // Auto-calc total when rooms/dates change and totalPrice is empty
+  useEffect(() => {
+    if (totalPrice || !checkIn || !checkOut || !roomIds.length) return;
+    const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
+    const sum = roomIds.reduce((acc, id) => acc + (rooms.find((r) => r.id === id)?.price ?? 0), 0);
+    if (sum > 0) setTotalPrice(String(sum * nights));
+  }, [roomIds, checkIn, checkOut, rooms, totalPrice]);
+
+  function toggleRoom(id: string) {
+    setRoomIds((prev) => prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]);
+  }
+
   async function save() {
-    if (!guestName || !roomId || !checkIn || !checkOut) {
-      toast.error("Please fill required fields");
+    if (!guestName || !roomIds.length || !checkIn || !checkOut) {
+      toast.error("Please fill required fields and select at least one room");
       return;
     }
     if (new Date(checkOut) <= new Date(checkIn)) {
@@ -170,16 +196,20 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
     }
     setSaving(true);
     try {
-      const { data: avail, error: availErr } = await supabase.rpc("is_room_available", {
-        _room_id: roomId, _check_in: checkIn, _check_out: checkOut,
-        _exclude_booking: booking?.id ?? undefined,
-      });
-      if (availErr) throw availErr;
-      if (avail === false) {
-        toast.error("Room is not available for those dates (booked or blocked).");
-        setSaving(false);
-        return;
+      // Availability check per room
+      for (const rid of roomIds) {
+        const { data: avail, error: aerr } = await supabase.rpc("is_room_available", {
+          _room_id: rid, _check_in: checkIn, _check_out: checkOut,
+          _exclude_booking: booking?.id ?? undefined,
+        });
+        if (aerr) throw aerr;
+        if (avail === false) {
+          const name = rooms.find((r) => r.id === rid)?.name ?? "room";
+          toast.error(`${name} is not available for those dates.`);
+          setSaving(false); return;
+        }
       }
+
       let gid = booking?.guest_id;
       if (isEdit && booking?.guest) {
         await supabase.from("guests").update({ name: guestName, phone: guestPhone || null, email: guestEmail || null }).eq("id", booking.guest.id);
@@ -189,17 +219,37 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         if (error) throw error;
         gid = data.id;
       }
+
       const payload = {
-        guest_id: gid!, room_id: roomId, check_in: checkIn, check_out: checkOut,
+        guest_id: gid!, room_id: roomIds[0], // keep legacy for compat
+        check_in: checkIn, check_out: checkOut,
         status, notes: notes || null, total_price: totalPrice ? Number(totalPrice) : null,
       };
+
+      let bookingId = booking?.id;
       if (isEdit) {
         const { error } = await supabase.from("bookings").update(payload).eq("id", booking!.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("bookings").insert(payload);
+        const { data, error } = await supabase.from("bookings").insert(payload).select("id").single();
         if (error) throw error;
+        bookingId = data.id;
       }
+
+      // Replace booking_rooms
+      if (bookingId) {
+        await supabase.from("booking_rooms").delete().eq("booking_id", bookingId);
+        const inserts = roomIds.map((rid) => ({
+          booking_id: bookingId!,
+          room_id: rid,
+          price_per_night: rooms.find((r) => r.id === rid)?.price ?? null,
+        }));
+        if (inserts.length) {
+          const { error } = await supabase.from("booking_rooms").insert(inserts);
+          if (error) throw error;
+        }
+      }
+
       toast.success(isEdit ? "Booking updated" : "Booking created");
       onSaved();
     } catch (e: unknown) {
@@ -234,11 +284,21 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Phone</Label><Input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} /></div>
         <div><Label>Email</Label><Input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} /></div>
       </div>
-      <div><Label>Room *</Label>
-        <Select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-          <option value="">Select room…</option>
-          {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} (${r.price}/night)</option>)}
-        </Select>
+      <div>
+        <Label>Rooms * (select one or more)</Label>
+        <div className="border border-border rounded-md max-h-48 overflow-y-auto divide-y divide-border">
+          {rooms.length === 0 && <div className="p-3 text-xs text-muted-foreground">No rooms yet.</div>}
+          {rooms.map((r) => (
+            <label key={r.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-accent cursor-pointer">
+              <span className="flex items-center gap-2">
+                <input type="checkbox" checked={roomIds.includes(r.id)} onChange={() => toggleRoom(r.id)} className="accent-[color:var(--primary)]" />
+                {r.name}
+              </span>
+              <span className="text-xs text-muted-foreground">${r.price}/night</span>
+            </label>
+          ))}
+        </div>
+        {roomIds.length > 1 && <div className="text-[10px] text-muted-foreground mt-1">{roomIds.length} rooms selected</div>}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div><Label>Check-in *</Label><Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} /></div>

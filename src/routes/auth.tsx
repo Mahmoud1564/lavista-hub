@@ -9,7 +9,6 @@ export const Route = createFileRoute("/auth")({
 });
 
 type Mode = "signin" | "signup" | "forgot";
-type RequestedRole = "admin" | "staff";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -18,7 +17,6 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [requestedRole, setRequestedRole] = useState<RequestedRole>("staff");
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [lastSignupEmail, setLastSignupEmail] = useState("");
@@ -82,12 +80,12 @@ function AuthPage() {
           password,
           options: {
             emailRedirectTo: window.location.origin + "/dashboard",
-            data: { full_name: fullName.trim(), requested_role: requestedRole },
+            data: { full_name: fullName.trim() },
           },
         });
         if (error) throw error;
         setLastSignupEmail(email);
-        toast.success(`Account created as ${requestedRole}. Check your email to confirm. An admin must approve your role.`);
+        toast.success("Account created. Check your email to confirm. An admin must approve your access.");
         setMode("signin");
         setConfirmPassword("");
       }
@@ -147,22 +145,7 @@ function AuthPage() {
                 <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
                   className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">I am a</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["staff", "admin"] as RequestedRole[]).map((r) => (
-                    <button key={r} type="button" onClick={() => setRequestedRole(r)}
-                      className={`py-2 rounded-md border text-sm capitalize transition ${
-                        requestedRole === r
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-input border-border text-foreground hover:border-ring"
-                      }`}>
-                      {r}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">An existing admin must approve your access after sign-up.</p>
-              </div>
+              <p className="text-[11px] text-muted-foreground -mt-1">An existing admin must approve your access after sign-up. All approved users get full administrator access.</p>
             </>
           )}
           <div>

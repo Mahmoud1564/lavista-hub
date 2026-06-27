@@ -640,6 +640,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_pending_user: {
+        Args: { _approval_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

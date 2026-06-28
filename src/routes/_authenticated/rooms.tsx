@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, Button, Input, Textarea, Label, Drawer, Empty, Badge } from "@/components/admin/ui";
 import { Plus, Trash2, Upload, X, Star, CalendarDays } from "lucide-react";
 import { uploadFile, deleteFile, getSignedUrls } from "@/lib/storage";
+import { useSignedImage } from "@/hooks/use-signed-image";
 import { PREDEFINED_AMENITIES } from "@/lib/amenities";
 
 const BUCKET = "room-images";
@@ -60,24 +61,27 @@ function RoomsPage() {
       {rooms.length === 0 ? <Card className="p-8"><Empty title="No rooms yet" hint="Click 'Add room' to get started." /></Card> : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {rooms.map((r) => (
-            <Card key={r.id} className="p-5">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="font-semibold">{r.name}</h3>
-                <Badge variant={r.is_active ? "success" : "muted"}>{r.is_active ? "Active" : "Inactive"}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground line-clamp-2 mb-3 min-h-[2rem]">{r.description ?? "No description"}</p>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                <span><span className="text-primary font-semibold">${r.price}</span> / night</span>
-                <span>{r.guests} guests</span>
-                <span>{r.beds} {r.beds === 1 ? "bed" : "beds"}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => setEditing(r)}>Edit</Button>
-                <Link to="/calendar" search={{ roomId: r.id }}>
-                  <Button size="sm" variant="outline"><CalendarDays className="w-4 h-4" />Calendar</Button>
-                </Link>
-                <Button size="sm" variant="ghost" onClick={() => toggleActive(r)}>{r.is_active ? "Deactivate" : "Activate"}</Button>
-                <Button size="sm" variant="ghost" onClick={() => deleteRoom(r)}><Trash2 className="w-4 h-4" /></Button>
+            <Card key={r.id} className="overflow-hidden">
+              <RoomThumbnail url={r.thumbnail_url} />
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="font-semibold">{r.name}</h3>
+                  <Badge variant={r.is_active ? "success" : "muted"}>{r.is_active ? "Active" : "Inactive"}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-2 mb-3 min-h-[2rem]">{r.description ?? "No description"}</p>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                  <span><span className="text-primary font-semibold">${r.price}</span> / night</span>
+                  <span>{r.guests} guests</span>
+                  <span>{r.beds} {r.beds === 1 ? "bed" : "beds"}</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setEditing(r)}>Edit</Button>
+                  <Link to="/calendar" search={{ roomId: r.id }}>
+                    <Button size="sm" variant="outline"><CalendarDays className="w-4 h-4" />Calendar</Button>
+                  </Link>
+                  <Button size="sm" variant="ghost" onClick={() => toggleActive(r)}>{r.is_active ? "Deactivate" : "Activate"}</Button>
+                  <Button size="sm" variant="ghost" onClick={() => deleteRoom(r)}><Trash2 className="w-4 h-4" /></Button>
+                </div>
               </div>
             </Card>
           ))}
@@ -96,6 +100,19 @@ function RoomsPage() {
 
 type ExistingImg = { id: string; image_url: string; signed: string | null; is_thumbnail: boolean };
 type PendingImg = { file: File; preview: string; isThumbnail: boolean };
+
+function RoomThumbnail({ url }: { url: string | null }) {
+  const signed = useSignedImage(BUCKET, url);
+  return (
+    <div className="aspect-[16/10] bg-muted overflow-hidden">
+      {signed ? (
+        <img src={signed} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">No image</div>
+      )}
+    </div>
+  );
+}
 
 function RoomForm({ room, onSaved }: { room?: Room; onSaved: () => void }) {
   const isEdit = !!room;

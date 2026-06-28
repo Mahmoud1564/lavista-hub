@@ -4,12 +4,13 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, Button, Input, Select, Label } from "@/components/admin/ui";
+import { Card, Button, Select, Label, Drawer, Badge } from "@/components/admin/ui";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import {
   format, addMonths, startOfMonth, endOfMonth, eachDayOfInterval, getDay,
-  isSameDay, isWithinInterval, isBefore, parseISO,
+  isSameDay, isWithinInterval, isBefore, parseISO, addDays, differenceInCalendarDays,
 } from "date-fns";
+import { useSignedImage } from "@/hooks/use-signed-image";
 
 const searchSchema = z.object({ roomId: z.string().optional() });
 
@@ -19,8 +20,12 @@ export const Route = createFileRoute("/_authenticated/calendar")({
 });
 
 type Block = { id: string; start_date: string; end_date: string; reason: string | null };
-type Booking = { id: string; check_in: string; check_out: string; status: string; guest: { name: string } | null };
-type Pricing = { id: string; start_date: string; end_date: string; price_per_night: number; label: string | null; priority: number };
+type Booking = {
+  id: string; check_in: string; check_out: string; status: string; num_guests: number | null;
+  notes: string | null; total_price: number | null;
+  guest: { id: string; name: string; phone: string | null; email: string | null } | null;
+};
+type Room = { id: string; name: string; price: number; thumbnail_url: string | null };
 
 function CalendarPage() {
   const search = useSearch({ from: "/_authenticated/calendar" });
@@ -29,17 +34,16 @@ function CalendarPage() {
   const [roomId, setRoomId] = useState<string>(search.roomId ?? "");
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
-  const [editingDay, setEditingDay] = useState<Date | null>(null);
+  const [openBooking, setOpenBooking] = useState<Booking | null>(null);
 
   const { data: rooms = [] } = useQuery({
     queryKey: ["rooms-min"],
     queryFn: async () => {
-      const { data } = await supabase.from("rooms").select("id, name, price").order("name");
-      return (data ?? []) as { id: string; name: string; price: number }[];
+      const { data } = await supabase.from("rooms").select("id, name, price, thumbnail_url").order("name");
+      return (data ?? []) as Room[];
     },
   });
 
-  // Default to first room
   if (!roomId && rooms.length) setRoomId(rooms[0].id);
   const room = rooms.find((r) => r.id === roomId);
 
@@ -63,11 +67,12 @@ function CalendarPage() {
     queryKey: ["room-bookings", roomId, startStr],
     enabled: !!roomId,
     queryFn: async () => {
+      const sel = "id, check_in, check_out, status, num_guests, notes, total_price, guest:guests(id, name, phone, email)";
       const [legacy, joined] = await Promise.all([
-        supabase.from("bookings").select("id, check_in, check_out, status, guest:guests(name)")
+        supabase.from("bookings").select(sel)
           .eq("room_id", roomId).in("status", ["upcoming","confirmed","pending","checked_in"])
           .gte("check_out", startStr).lte("check_in", endStr),
-        supabase.from("booking_rooms").select("booking:bookings(id, check_in, check_out, status, guest:guests(name))")
+        supabase.from("booking_rooms").select(`booking:bookings(${sel})`)
           .eq("room_id", roomId),
       ]);
       const out: Booking[] = [];
@@ -82,28 +87,9 @@ function CalendarPage() {
     },
   });
 
-  const { data: pricing = [] } = useQuery({
-    queryKey: ["room-pricing", roomId],
-    enabled: !!roomId,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("room_pricing").select("*")
-        .eq("room_id", roomId).order("priority", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as Pricing[];
-    },
-  });
-
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const leadingBlanks = getDay(monthStart);
-
-  function priceForDay(d: Date): { price: number; rule: Pricing | null } {
-    if (!room) return { price: 0, rule: null };
-    for (const p of pricing) {
-      const s = parseISO(p.start_date), e = parseISO(p.end_date);
-      if (isWithinInterval(d, { start: s, end: e })) return { price: Number(p.price_per_night), rule: p };
-    }
-    return { price: Number(room.price), rule: null };
-  }
+  const today = new Date();
 
   function dayInfo(d: Date) {
     const dStr = format(d, "yyyy-MM-dd");
@@ -113,7 +99,7 @@ function CalendarPage() {
     });
     const block = blocks.find((b) =>
       isWithinInterval(d, { start: parseISO(b.start_date), end: parseISO(b.end_date) }));
-    return { dStr, booking, block, ...priceForDay(d) };
+    return { dStr, booking, block };
   }
 
   function inRange(d: Date) {
@@ -125,12 +111,8 @@ function CalendarPage() {
 
   function onClickDay(d: Date) {
     const info = dayInfo(d);
-    if (info.booking) { toast.message(`Booked: ${info.booking.guest?.name ?? ""}`); return; }
+    if (info.booking) { setOpenBooking(info.booking); return; }
     if (!rangeStart) { setRangeStart(d); setRangeEnd(d); return; }
-    if (rangeStart && rangeEnd && isSameDay(rangeStart, rangeEnd) && isSameDay(rangeStart, d)) {
-      // Same single day click — open editor
-      setEditingDay(d); setRangeStart(null); setRangeEnd(null); return;
-    }
     if (!rangeEnd || !isSameDay(rangeStart, rangeEnd)) { setRangeStart(d); setRangeEnd(d); return; }
     setRangeEnd(d);
   }
@@ -139,6 +121,18 @@ function CalendarPage() {
     if (!rangeStart || !rangeEnd) return null;
     return rangeStart <= rangeEnd ? [rangeStart, rangeEnd] as const : [rangeEnd, rangeStart] as const;
   }, [rangeStart, rangeEnd]);
+
+  // Check if EVERY day in range is currently blocked
+  const rangeFullyBlocked = useMemo(() => {
+    if (!orderedRange) return false;
+    const [a, b] = orderedRange;
+    const span = eachDayOfInterval({ start: a, end: b });
+    return span.every((d) =>
+      blocks.some((blk) =>
+        isWithinInterval(d, { start: parseISO(blk.start_date), end: parseISO(blk.end_date) })
+      )
+    );
+  }, [orderedRange, blocks]);
 
   async function blockRange() {
     if (!orderedRange || !roomId) return;
@@ -152,43 +146,63 @@ function CalendarPage() {
     qc.invalidateQueries({ queryKey: ["room-blocks", roomId] });
   }
 
-  async function unblockBlock(id: string) {
-    const { error } = await supabase.from("room_blocks").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Unblocked");
-    qc.invalidateQueries({ queryKey: ["room-blocks", roomId] });
-  }
-
-  async function setRangePrice(price: number, label: string) {
+  async function unblockRange() {
     if (!orderedRange || !roomId) return;
     const [a, b] = orderedRange;
-    const { error } = await supabase.from("room_pricing").insert({
-      room_id: roomId, start_date: format(a, "yyyy-MM-dd"), end_date: format(b, "yyyy-MM-dd"),
-      price_per_night: price, label, priority: isSameDay(a, b) ? 100 : 10,
+    // Find all blocks overlapping the selected range
+    const overlapping = blocks.filter((blk) => {
+      const bs = parseISO(blk.start_date), be = parseISO(blk.end_date);
+      return bs <= b && be >= a;
     });
-    if (error) { toast.error(error.message); return; }
-    toast.success("Pricing rule added");
-    setRangeStart(null); setRangeEnd(null);
-    qc.invalidateQueries({ queryKey: ["room-pricing", roomId] });
-  }
-
-  async function deletePricing(id: string) {
-    const { error } = await supabase.from("room_pricing").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
-    qc.invalidateQueries({ queryKey: ["room-pricing", roomId] });
+    try {
+      for (const blk of overlapping) {
+        const bs = parseISO(blk.start_date), be = parseISO(blk.end_date);
+        // Delete original
+        const { error: delErr } = await supabase.from("room_blocks").delete().eq("id", blk.id);
+        if (delErr) throw delErr;
+        // Re-insert left remainder
+        if (bs < a) {
+          const leftEnd = addDays(a, -1);
+          if (differenceInCalendarDays(leftEnd, bs) >= 0) {
+            const { error } = await supabase.from("room_blocks").insert({
+              room_id: roomId, start_date: format(bs, "yyyy-MM-dd"),
+              end_date: format(leftEnd, "yyyy-MM-dd"), reason: blk.reason,
+            });
+            if (error) throw error;
+          }
+        }
+        // Re-insert right remainder
+        if (be > b) {
+          const rightStart = addDays(b, 1);
+          if (differenceInCalendarDays(be, rightStart) >= 0) {
+            const { error } = await supabase.from("room_blocks").insert({
+              room_id: roomId, start_date: format(rightStart, "yyyy-MM-dd"),
+              end_date: format(be, "yyyy-MM-dd"), reason: blk.reason,
+            });
+            if (error) throw error;
+          }
+        }
+      }
+      toast.success("Dates unblocked");
+      setRangeStart(null); setRangeEnd(null);
+      qc.invalidateQueries({ queryKey: ["room-blocks", roomId] });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Unblock failed");
+    }
   }
 
   if (!rooms.length) {
-    return <Card className="p-8 text-center text-sm text-muted-foreground">Add a room first to manage availability and pricing.</Card>;
+    return <Card className="p-8 text-center text-sm text-muted-foreground">Add a room first to manage availability.</Card>;
   }
 
   return (
     <div className="space-y-4">
       <Card className="p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <RoomThumb url={room?.thumbnail_url ?? null} />
         <div className="flex-1">
           <Label>Room</Label>
           <Select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-            {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} (base ${r.price}/night)</option>)}
+            {rooms.map((r) => <option key={r.id} value={r.id}>{r.name} (${r.price}/night)</option>)}
           </Select>
         </div>
         <div className="flex items-center gap-2">
@@ -208,22 +222,37 @@ function CalendarPage() {
           {days.map((d) => {
             const info = dayInfo(d);
             const selected = inRange(d);
-            const past = isBefore(d, startOfMonth(new Date())) && !isSameDay(d, new Date());
+            const past = isBefore(d, startOfMonth(new Date())) && !isSameDay(d, today);
+            const isToday = isSameDay(d, today);
             let cls = "bg-emerald-500/10 hover:bg-emerald-500/25 text-foreground";
-            let title = `Available — $${info.price}/night`;
-            if (info.booking) { cls = "bg-destructive/30 text-destructive-foreground cursor-not-allowed"; title = `Booked: ${info.booking.guest?.name ?? ""}`; }
-            else if (info.block) { cls = "bg-muted text-muted-foreground hover:bg-muted/70"; title = "Blocked"; }
+            let title = "Available";
+            if (info.booking) {
+              cls = "bg-destructive/25 hover:bg-destructive/40 text-foreground";
+              title = `Booked: ${info.booking.guest?.name ?? ""} (${info.booking.status})`;
+            } else if (info.block) {
+              cls = "bg-muted text-muted-foreground hover:bg-muted/70";
+              title = "Blocked";
+            }
             if (selected && !info.booking) cls = "bg-primary text-primary-foreground";
             if (past) cls += " opacity-50";
+            const todayRing = isToday ? "ring-2 ring-amber-400 ring-offset-2 ring-offset-background shadow-lg shadow-amber-400/20 font-bold" : "";
             return (
               <button key={info.dStr} title={title} onClick={() => onClickDay(d)}
-                className={`min-h-[64px] p-1.5 rounded-md text-left transition-colors flex flex-col justify-between ${cls}`}>
-                <span className="text-sm font-semibold">{format(d, "d")}</span>
-                <span className="text-[10px] opacity-80">
-                  {info.booking ? "Booked" : info.block ? "Blocked" : `$${info.price}`}
-                </span>
-                {info.rule && !info.booking && !info.block && (
-                  <span className="text-[9px] opacity-70 truncate">{info.rule.label ?? "Special"}</span>
+                className={`min-h-[80px] p-1.5 rounded-md text-left transition-colors flex flex-col gap-0.5 ${cls} ${todayRing}`}>
+                <div className="flex items-center justify-between">
+                  <span className={`text-sm ${isToday ? "font-extrabold" : "font-semibold"}`}>{format(d, "d")}</span>
+                  {isToday && <span className="text-[8px] uppercase tracking-wider bg-amber-400 text-amber-950 px-1 rounded">Today</span>}
+                </div>
+                {info.booking ? (
+                  <div className="text-[10px] leading-tight overflow-hidden">
+                    <div className="font-semibold truncate">{info.booking.guest?.name ?? "Guest"}</div>
+                    <div className="opacity-75 truncate">{info.booking.status}</div>
+                    <div className="opacity-75 truncate">👥 {info.booking.num_guests ?? 1}</div>
+                  </div>
+                ) : info.block ? (
+                  <span className="text-[10px] opacity-80">Blocked</span>
+                ) : (
+                  <span className="text-[10px] opacity-60">Available</span>
                 )}
               </button>
             );
@@ -235,161 +264,101 @@ function CalendarPage() {
           <span className="flex items-center gap-1"><span className="w-3 h-3 bg-muted rounded" /> Blocked</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 bg-destructive/40 rounded" /> Booked</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 bg-primary rounded" /> Selected</span>
-          <span className="text-muted-foreground ml-auto">Click a date then a second date to select a range, or click the same day twice to edit it.</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded ring-2 ring-amber-400" /> Today</span>
+          <span className="text-muted-foreground ml-auto">Click a date, then a second to select a range. Click a booked day to view details.</span>
         </div>
       </Card>
 
       {orderedRange && (
-        <RangeActionsCard
-          range={orderedRange}
-          basePrice={room?.price ?? 0}
-          onBlock={blockRange}
-          onSetPrice={setRangePrice}
-          onClear={() => { setRangeStart(null); setRangeEnd(null); }}
-        />
+        <Card className="p-5 border-primary/40">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-sm">
+              Selected: {format(orderedRange[0], "MMM d")} – {format(orderedRange[1], "MMM d, yyyy")}
+            </h3>
+            <Button size="sm" variant="ghost" onClick={() => { setRangeStart(null); setRangeEnd(null); }}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {rangeFullyBlocked ? (
+              <Button variant="outline" onClick={unblockRange}>Unblock dates</Button>
+            ) : (
+              <Button onClick={blockRange}>Block dates</Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            {rangeFullyBlocked
+              ? "These dates are currently blocked. Unblocking only removes the block from this selection."
+              : "Block these dates to prevent new bookings during this range."}
+          </p>
+        </Card>
       )}
 
-      {editingDay && (
-        <DayEditor
-          day={editingDay}
-          info={dayInfo(editingDay)}
-          basePrice={room?.price ?? 0}
-          onUnblock={unblockBlock}
-          onSetPrice={(price, label) => {
-            setRangeStart(editingDay); setRangeEnd(editingDay);
-            setRangePrice(price, label);
-            setEditingDay(null);
-          }}
-          onBlock={() => {
-            setRangeStart(editingDay); setRangeEnd(editingDay);
-            blockRange();
-            setEditingDay(null);
-          }}
-          onDeletePricing={deletePricing}
-          onClose={() => setEditingDay(null)}
-        />
-      )}
-
-      <Card className="p-5">
-        <h3 className="font-semibold mb-3">Pricing rules</h3>
-        {pricing.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No special pricing rules. The room's base price (${room?.price}/night) applies.</p>
-        ) : (
-          <div className="space-y-2">
-            {pricing.map((p) => (
-              <div key={p.id} className="flex items-center justify-between gap-3 bg-muted/40 rounded-md px-3 py-2 text-sm">
-                <div>
-                  <div className="font-medium">{p.label ?? "Special"} — ${p.price_per_night}/night</div>
-                  <div className="text-xs text-muted-foreground">{p.start_date} → {p.end_date} (priority {p.priority})</div>
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => deletePricing(p.id)}><X className="w-4 h-4" /></Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      <Card className="p-5">
-        <h3 className="font-semibold mb-3">Manual blocks</h3>
-        {blocks.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No blocks in this month.</p>
-        ) : (
-          <div className="space-y-2">
-            {blocks.map((b) => (
-              <div key={b.id} className="flex items-center justify-between gap-3 bg-muted/40 rounded-md px-3 py-2 text-sm">
-                <div>
-                  <div className="font-medium">{b.start_date} → {b.end_date}</div>
-                  <div className="text-xs text-muted-foreground">{b.reason ?? "Blocked"}</div>
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => unblockBlock(b.id)}>Unblock</Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
+      <Drawer open={!!openBooking} onClose={() => setOpenBooking(null)} title="Booking details">
+        {openBooking && <BookingDetails booking={openBooking} />}
+      </Drawer>
     </div>
   );
 }
 
-function RangeActionsCard({
-  range, basePrice, onBlock, onSetPrice, onClear,
-}: {
-  range: readonly [Date, Date]; basePrice: number;
-  onBlock: () => void; onSetPrice: (price: number, label: string) => void; onClear: () => void;
-}) {
-  const [price, setPrice] = useState(String(basePrice));
-  const [label, setLabel] = useState("");
-  const [a, b] = range;
+function RoomThumb({ url }: { url: string | null }) {
+  const signed = useSignedImage("room-images", url);
   return (
-    <Card className="p-5 border-primary/40">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm">Selected: {format(a, "MMM d")} – {format(b, "MMM d, yyyy")}</h3>
-        <Button size="sm" variant="ghost" onClick={onClear}><X className="w-4 h-4" /></Button>
-      </div>
-      <div className="grid sm:grid-cols-3 gap-3 mb-3">
-        <div>
-          <Label>Price / night</Label>
-          <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
-        </div>
-        <div className="sm:col-span-2">
-          <Label>Label (e.g. "High season")</Label>
-          <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="High season / Holiday / Special" />
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={() => onSetPrice(Number(price), label || "Special")}>Apply price to range</Button>
-        <Button variant="outline" onClick={onBlock}>Block dates</Button>
-      </div>
-    </Card>
+    <div className="w-16 h-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
+      {signed && <img src={signed} alt="" className="w-full h-full object-cover" />}
+    </div>
   );
 }
 
-function DayEditor({
-  day, info, basePrice, onUnblock, onSetPrice, onBlock, onDeletePricing, onClose,
-}: {
-  day: Date;
-  info: { booking: Booking | undefined; block: Block | undefined; price: number; rule: Pricing | null };
-  basePrice: number;
-  onUnblock: (id: string) => void;
-  onSetPrice: (price: number, label: string) => void;
-  onBlock: () => void;
-  onDeletePricing: (id: string) => void;
-  onClose: () => void;
-}) {
-  const [price, setPrice] = useState(String(info.price || basePrice));
-  const [label, setLabel] = useState(info.rule?.label ?? "");
+function BookingDetails({ booking }: { booking: Booking }) {
+  const statusVariant: Record<string, "success" | "warning" | "danger" | "muted"> = {
+    upcoming: "warning", confirmed: "success", completed: "muted", cancelled: "danger",
+    pending: "warning", checked_in: "success",
+  };
+  const nights = differenceInCalendarDays(parseISO(booking.check_out), parseISO(booking.check_in));
   return (
-    <Card className="p-5 border-primary/40">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm">{format(day, "EEEE, MMM d, yyyy")}</h3>
-        <Button size="sm" variant="ghost" onClick={onClose}><X className="w-4 h-4" /></Button>
+    <div className="space-y-4 text-sm">
+      <div className="flex items-center gap-2">
+        <Badge variant={statusVariant[booking.status] ?? "default"}>{booking.status}</Badge>
+        <span className="text-xs text-muted-foreground">#{booking.id.slice(0, 8)}</span>
       </div>
-      {info.booking ? (
-        <p className="text-sm text-muted-foreground">Booked by {info.booking.guest?.name ?? "guest"}.</p>
-      ) : (
-        <div className="space-y-3">
-          {info.block && (
-            <div className="flex items-center justify-between bg-muted/40 rounded-md px-3 py-2 text-sm">
-              <span>Currently blocked</span>
-              <Button size="sm" variant="outline" onClick={() => { onUnblock(info.block!.id); onClose(); }}>Unblock</Button>
-            </div>
-          )}
-          {info.rule && (
-            <div className="flex items-center justify-between bg-muted/40 rounded-md px-3 py-2 text-sm">
-              <span>Current rule: {info.rule.label ?? "Special"} — ${info.rule.price_per_night}</span>
-              <Button size="sm" variant="ghost" onClick={() => { onDeletePricing(info.rule!.id); onClose(); }}>Remove</Button>
-            </div>
-          )}
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div><Label>Price for this day</Label><Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} /></div>
-            <div><Label>Label</Label><Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Special" /></div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => onSetPrice(Number(price), label || "Special")}>Set price</Button>
-            {!info.block && <Button variant="outline" onClick={onBlock}>Block this day</Button>}
-          </div>
+      <div>
+        <div className="text-xs text-muted-foreground">Guest</div>
+        <div className="font-semibold">{booking.guest?.name ?? "—"}</div>
+        {booking.guest?.phone && <div className="text-xs text-muted-foreground">{booking.guest.phone}</div>}
+        {booking.guest?.email && <div className="text-xs text-muted-foreground">{booking.guest.email}</div>}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <div className="text-xs text-muted-foreground">Check-in</div>
+          <div className="font-medium">{format(parseISO(booking.check_in), "EEE, MMM d, yyyy")}</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">Check-out</div>
+          <div className="font-medium">{format(parseISO(booking.check_out), "EEE, MMM d, yyyy")}</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">Nights</div>
+          <div className="font-medium">{nights}</div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">Guests</div>
+          <div className="font-medium">{booking.num_guests ?? 1}</div>
+        </div>
+      </div>
+      {booking.total_price != null && (
+        <div>
+          <div className="text-xs text-muted-foreground">Total</div>
+          <div className="font-semibold">${booking.total_price}</div>
         </div>
       )}
-    </Card>
+      {booking.notes && (
+        <div>
+          <div className="text-xs text-muted-foreground">Notes</div>
+          <p className="whitespace-pre-wrap">{booking.notes}</p>
+        </div>
+      )}
+      <a href={`/bookings`} className="text-xs text-primary hover:underline">Manage in Bookings →</a>
+    </div>
   );
 }

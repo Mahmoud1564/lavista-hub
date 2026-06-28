@@ -85,6 +85,7 @@ export type Database = {
           guest_id: string | null
           id: string
           notes: string | null
+          num_guests: number
           room_id: string | null
           status: string
           total_price: number | null
@@ -97,6 +98,7 @@ export type Database = {
           guest_id?: string | null
           id?: string
           notes?: string | null
+          num_guests?: number
           room_id?: string | null
           status?: string
           total_price?: number | null
@@ -109,6 +111,7 @@ export type Database = {
           guest_id?: string | null
           id?: string
           notes?: string | null
+          num_guests?: number
           room_id?: string | null
           status?: string
           total_price?: number | null

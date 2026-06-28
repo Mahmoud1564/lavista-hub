@@ -16,7 +16,7 @@ type BookedRoom = { id: string; room_id: string; price_per_night: number | null;
 type BookingRow = {
   id: string; check_in: string; check_out: string; status: string;
   notes: string | null; total_price: number | null; created_at: string;
-  guest_id: string | null; room_id: string | null;
+  guest_id: string | null; room_id: string | null; num_guests: number | null;
   guest: { id: string; name: string; phone: string | null; email: string | null } | null;
   room: { id: string; name: string; price: number } | null;
   booking_rooms: BookedRoom[];
@@ -34,7 +34,7 @@ function BookingsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, check_in, check_out, status, notes, total_price, created_at, guest_id, room_id, guest:guests(id, name, phone, email), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))")
+        .select("id, check_in, check_out, status, notes, total_price, created_at, guest_id, room_id, num_guests, guest:guests(id, name, phone, email), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as BookingRow[];
@@ -163,6 +163,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   const [status, setStatus] = useState(booking?.status ?? "upcoming");
   const [notes, setNotes] = useState(booking?.notes ?? "");
   const [totalPrice, setTotalPrice] = useState(booking?.total_price?.toString() ?? "");
+  const [numGuests, setNumGuests] = useState(booking?.num_guests?.toString() ?? "1");
   const [saving, setSaving] = useState(false);
 
   const { data: rooms = [] } = useQuery({
@@ -224,6 +225,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         guest_id: gid!, room_id: roomIds[0], // keep legacy for compat
         check_in: checkIn, check_out: checkOut,
         status, notes: notes || null, total_price: totalPrice ? Number(totalPrice) : null,
+        num_guests: Number(numGuests) || 1,
       };
 
       let bookingId = booking?.id;
@@ -304,7 +306,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Check-in *</Label><Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} /></div>
         <div><Label>Check-out *</Label><Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /></div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div><Label>Status</Label>
           <Select value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="upcoming">Upcoming</option>
@@ -313,6 +315,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
             <option value="cancelled">Cancelled</option>
           </Select>
         </div>
+        <div><Label>Guests</Label><Input type="number" min="1" value={numGuests} onChange={(e) => setNumGuests(e.target.value)} /></div>
         <div><Label>Total price</Label><Input type="number" step="0.01" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} /></div>
       </div>
       <div><Label>Notes</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>

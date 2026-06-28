@@ -16,7 +16,7 @@ type BookedRoom = { id: string; room_id: string; price_per_night: number | null;
 type BookingRow = {
   id: string; check_in: string; check_out: string; status: string;
   notes: string | null; total_price: number | null; created_at: string;
-  guest_id: string | null; room_id: string | null;
+  guest_id: string | null; room_id: string | null; num_guests: number | null;
   guest: { id: string; name: string; phone: string | null; email: string | null } | null;
   room: { id: string; name: string; price: number } | null;
   booking_rooms: BookedRoom[];

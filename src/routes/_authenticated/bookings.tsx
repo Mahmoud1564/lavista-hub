@@ -163,6 +163,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   const [status, setStatus] = useState(booking?.status ?? "upcoming");
   const [notes, setNotes] = useState(booking?.notes ?? "");
   const [totalPrice, setTotalPrice] = useState(booking?.total_price?.toString() ?? "");
+  const [numGuests, setNumGuests] = useState(booking?.num_guests?.toString() ?? "1");
   const [saving, setSaving] = useState(false);
 
   const { data: rooms = [] } = useQuery({
@@ -224,6 +225,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         guest_id: gid!, room_id: roomIds[0], // keep legacy for compat
         check_in: checkIn, check_out: checkOut,
         status, notes: notes || null, total_price: totalPrice ? Number(totalPrice) : null,
+        num_guests: Number(numGuests) || 1,
       };
 
       let bookingId = booking?.id;

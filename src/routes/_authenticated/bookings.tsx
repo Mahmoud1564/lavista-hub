@@ -306,7 +306,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Check-in *</Label><Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} /></div>
         <div><Label>Check-out *</Label><Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /></div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div><Label>Status</Label>
           <Select value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="upcoming">Upcoming</option>
@@ -315,6 +315,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
             <option value="cancelled">Cancelled</option>
           </Select>
         </div>
+        <div><Label>Guests</Label><Input type="number" min="1" value={numGuests} onChange={(e) => setNumGuests(e.target.value)} /></div>
         <div><Label>Total price</Label><Input type="number" step="0.01" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} /></div>
       </div>
       <div><Label>Notes</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>

@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, Button, Input, Textarea, Label, Drawer, Empty, Badge } from "@/components/admin/ui";
 import { Plus, Trash2, Upload, X, Star } from "lucide-react";
 import { uploadFile, deleteFile, getSignedUrls } from "@/lib/storage";
+import { useSignedImage } from "@/hooks/use-signed-image";
 
 const BUCKET = "experience-images";
 
@@ -56,17 +57,20 @@ function ExpPage() {
       {items.length === 0 ? <Card className="p-8"><Empty title="No experiences yet" /></Card> : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map((e) => (
-            <Card key={e.id} className="p-5">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="font-semibold">{e.title}</h3>
-                <Badge variant={e.is_active ? "success" : "muted"}>{e.is_active ? "Active" : "Inactive"}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground line-clamp-3 mb-2 min-h-[3rem]">{e.description ?? "No description"}</p>
-              {e.duration && <p className="text-xs text-primary mb-3">⏱ {e.duration}</p>}
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setEditing(e)}>Edit</Button>
-                <Button size="sm" variant="ghost" onClick={() => toggle(e)}>{e.is_active ? "Hide" : "Show"}</Button>
-                <Button size="sm" variant="ghost" onClick={() => del(e)}><Trash2 className="w-4 h-4" /></Button>
+            <Card key={e.id} className="overflow-hidden">
+              <ExpThumbnail url={e.thumbnail_url} />
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="font-semibold">{e.title}</h3>
+                  <Badge variant={e.is_active ? "success" : "muted"}>{e.is_active ? "Active" : "Inactive"}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-3 mb-2 min-h-[3rem]">{e.description ?? "No description"}</p>
+                {e.duration && <p className="text-xs text-primary mb-3">⏱ {e.duration}</p>}
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setEditing(e)}>Edit</Button>
+                  <Button size="sm" variant="ghost" onClick={() => toggle(e)}>{e.is_active ? "Hide" : "Show"}</Button>
+                  <Button size="sm" variant="ghost" onClick={() => del(e)}><Trash2 className="w-4 h-4" /></Button>
+                </div>
               </div>
             </Card>
           ))}
@@ -86,6 +90,19 @@ function ExpPage() {
 type ExpImg = { id: string; image_url: string; signed: string | null; is_thumbnail: boolean };
 type PendingImg = { file: File; preview: string; isThumbnail: boolean };
 type ExpDate = { id?: string; date: string; is_available: boolean };
+
+function ExpThumbnail({ url }: { url: string | null }) {
+  const signed = useSignedImage(BUCKET, url);
+  return (
+    <div className="aspect-[16/10] bg-muted overflow-hidden">
+      {signed ? (
+        <img src={signed} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">No image</div>
+      )}
+    </div>
+  );
+}
 
 function Form({ item, onSaved }: { item?: Experience; onSaved: () => void }) {
   const isEdit = !!item;

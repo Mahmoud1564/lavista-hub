@@ -1,0 +1,1 @@
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS num_guests integer NOT NULL DEFAULT 1;

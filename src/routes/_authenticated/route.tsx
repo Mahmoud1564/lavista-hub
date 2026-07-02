@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard, CalendarDays, BedDouble, CalendarRange, Sparkles, Star,
-  HelpCircle, FileText, Image as ImageIcon, Settings as SettingsIcon, LogOut, Menu, X,
+  HelpCircle, FileText, Image as ImageIcon, Settings as SettingsIcon, LogOut, Menu, X, Users,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({

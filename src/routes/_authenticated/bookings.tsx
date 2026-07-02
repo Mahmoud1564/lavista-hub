@@ -15,15 +15,12 @@ type BookedRoom = { id: string; room_id: string; price_per_night: number | null;
 
 type BookingRow = {
   id: string; check_in: string; check_out: string; status: string;
-  notes: string | null; admin_notes: string | null; arrival_time: string | null;
-  total_price: number | null; created_at: string;
+  notes: string | null; total_price: number | null; created_at: string;
   guest_id: string | null; room_id: string | null; num_guests: number | null;
-  guest: { id: string; name: string; phone: string | null; email: string | null; country: string | null } | null;
+  guest: { id: string; name: string; phone: string | null; email: string | null } | null;
   room: { id: string; name: string; price: number } | null;
   booking_rooms: BookedRoom[];
 };
-
-const BOOKING_SELECT = "id, check_in, check_out, status, notes, admin_notes, arrival_time, total_price, created_at, guest_id, room_id, num_guests, guest:guests(id, name, phone, email, country), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))";
 
 function BookingsPage() {
   const qc = useQueryClient();
@@ -37,7 +34,7 @@ function BookingsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select(BOOKING_SELECT)
+        .select("id, check_in, check_out, status, notes, total_price, created_at, guest_id, room_id, num_guests, guest:guests(id, name, phone, email), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as BookingRow[];
@@ -104,8 +101,7 @@ function BookingsPage() {
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted-foreground border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Booking ID</th>
-                  <th className="px-4 py-3 font-medium">Guest name</th>
+                  <th className="px-4 py-3 font-medium">Guest</th>
                   <th className="px-4 py-3 font-medium">Rooms</th>
                   <th className="px-4 py-3 font-medium">Check-in</th>
                   <th className="px-4 py-3 font-medium">Check-out</th>
@@ -116,10 +112,9 @@ function BookingsPage() {
               <tbody>
                 {filtered.map((b) => (
                   <tr key={b.id} onClick={() => setSelected(b)} className="border-b border-border/50 last:border-0 hover:bg-accent/40 cursor-pointer">
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">#{b.id.slice(0, 8)}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium">{b.guest?.name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground">{b.guest?.phone ?? b.guest?.email ?? ""}</div>
+                      <div className="text-xs text-muted-foreground">{b.guest?.phone ?? ""}</div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{roomsLabel(b)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_in), "MMM d, yyyy")}</td>
@@ -157,7 +152,6 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   const [guestName, setGuestName] = useState(booking?.guest?.name ?? "");
   const [guestPhone, setGuestPhone] = useState(booking?.guest?.phone ?? "");
   const [guestEmail, setGuestEmail] = useState(booking?.guest?.email ?? "");
-  const [guestCountry, setGuestCountry] = useState(booking?.guest?.country ?? "");
   const initialRoomIds = useMemo(() => {
     if (booking?.booking_rooms?.length) return booking.booking_rooms.map((br) => br.room_id);
     if (booking?.room_id) return [booking.room_id];
@@ -167,13 +161,10 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   const [checkIn, setCheckIn] = useState(booking?.check_in ?? "");
   const [checkOut, setCheckOut] = useState(booking?.check_out ?? "");
   const [status, setStatus] = useState(booking?.status ?? "upcoming");
-  const [adminNotes, setAdminNotes] = useState(booking?.admin_notes ?? "");
-  const [arrivalTime, setArrivalTime] = useState(booking?.arrival_time ?? "");
+  const [notes, setNotes] = useState(booking?.notes ?? "");
   const [totalPrice, setTotalPrice] = useState(booking?.total_price?.toString() ?? "");
   const [numGuests, setNumGuests] = useState(booking?.num_guests?.toString() ?? "1");
   const [saving, setSaving] = useState(false);
-
-  const guestNotes = booking?.notes ?? ""; // read-only guest special requests
 
   const { data: rooms = [] } = useQuery({
     queryKey: ["rooms-min"],
@@ -183,6 +174,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
     },
   });
 
+  // Auto-calc total when rooms/dates change and totalPrice is empty
   useEffect(() => {
     if (totalPrice || !checkIn || !checkOut || !roomIds.length) return;
     const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
@@ -195,21 +187,23 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   }
 
   async function save() {
-    if (!guestName.trim()) { toast.error("Guest name is required"); return; }
-    if (!roomIds.length) { toast.error("Select at least one room"); return; }
-    if (!checkIn || !checkOut) { toast.error("Check-in and check-out are required"); return; }
-    if (new Date(checkOut) <= new Date(checkIn)) { toast.error("Check-out must be after check-in"); return; }
-
+    if (!guestName || !roomIds.length || !checkIn || !checkOut) {
+      toast.error("Please fill required fields and select at least one room");
+      return;
+    }
+    if (new Date(checkOut) <= new Date(checkIn)) {
+      toast.error("Check-out must be after check-in");
+      return;
+    }
     setSaving(true);
     try {
       // Availability check per room
       for (const rid of roomIds) {
-        const rpcArgs: { _room_id: string; _check_in: string; _check_out: string; _exclude_booking?: string } = {
+        const { data: avail, error: aerr } = await supabase.rpc("is_room_available", {
           _room_id: rid, _check_in: checkIn, _check_out: checkOut,
-        };
-        if (booking?.id) rpcArgs._exclude_booking = booking.id;
-        const { data: avail, error: aerr } = await supabase.rpc("is_room_available", rpcArgs);
-        if (aerr) throw new Error(`Availability check failed: ${aerr.message}`);
+          _exclude_booking: booking?.id ?? undefined,
+        });
+        if (aerr) throw aerr;
         if (avail === false) {
           const name = rooms.find((r) => r.id === rid)?.name ?? "room";
           toast.error(`${name} is not available for those dates.`);
@@ -217,46 +211,36 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         }
       }
 
-      // Upsert guest
-      let gid = booking?.guest_id ?? null;
-      const guestPayload = {
-        name: guestName.trim(),
-        phone: guestPhone.trim() || null,
-        email: guestEmail.trim() || null,
-        country: guestCountry.trim() || null,
-      };
-      if (gid) {
-        const { error } = await supabase.from("guests").update(guestPayload).eq("id", gid);
-        if (error) throw new Error(`Guest update failed: ${error.message}`);
+      let gid = booking?.guest_id;
+      if (isEdit && booking?.guest) {
+        await supabase.from("guests").update({ name: guestName, phone: guestPhone || null, email: guestEmail || null }).eq("id", booking.guest.id);
+        gid = booking.guest.id;
       } else {
-        const { data, error } = await supabase.from("guests").insert(guestPayload).select("id").single();
-        if (error) throw new Error(`Guest create failed: ${error.message}`);
+        const { data, error } = await supabase.from("guests").insert({ name: guestName, phone: guestPhone || null, email: guestEmail || null }).select("id").single();
+        if (error) throw error;
         gid = data.id;
       }
 
       const payload = {
-        guest_id: gid, room_id: roomIds[0],
+        guest_id: gid!, room_id: roomIds[0], // keep legacy for compat
         check_in: checkIn, check_out: checkOut,
-        status,
-        admin_notes: adminNotes.trim() || null,
-        arrival_time: arrivalTime.trim() || null,
-        total_price: totalPrice ? Number(totalPrice) : null,
+        status, notes: notes || null, total_price: totalPrice ? Number(totalPrice) : null,
         num_guests: Number(numGuests) || 1,
       };
 
       let bookingId = booking?.id;
       if (isEdit) {
         const { error } = await supabase.from("bookings").update(payload).eq("id", booking!.id);
-        if (error) throw new Error(`Booking update failed: ${error.message}`);
+        if (error) throw error;
       } else {
         const { data, error } = await supabase.from("bookings").insert(payload).select("id").single();
-        if (error) throw new Error(`Booking create failed: ${error.message}`);
+        if (error) throw error;
         bookingId = data.id;
       }
 
+      // Replace booking_rooms
       if (bookingId) {
-        const { error: delErr } = await supabase.from("booking_rooms").delete().eq("booking_id", bookingId);
-        if (delErr) throw new Error(`Booking rooms cleanup failed: ${delErr.message}`);
+        await supabase.from("booking_rooms").delete().eq("booking_id", bookingId);
         const inserts = roomIds.map((rid) => ({
           booking_id: bookingId!,
           room_id: rid,
@@ -264,16 +248,14 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         }));
         if (inserts.length) {
           const { error } = await supabase.from("booking_rooms").insert(inserts);
-          if (error) throw new Error(`Booking rooms insert failed: ${error.message}`);
+          if (error) throw error;
         }
       }
 
       toast.success(isEdit ? "Booking updated" : "Booking created");
       onSaved();
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Save failed";
-      console.error("Booking save failed:", e);
-      toast.error(msg);
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -299,21 +281,11 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
 
   return (
     <div className="space-y-4">
-      {isEdit && (
-        <div className="text-xs text-muted-foreground font-mono border border-border rounded-md px-3 py-2 bg-muted/40">
-          Booking ID: {booking!.id}
-        </div>
-      )}
-
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">Guest information</div>
-      <div><Label>Full name *</Label><Input value={guestName} onChange={(e) => setGuestName(e.target.value)} /></div>
+      <div><Label>Guest name *</Label><Input value={guestName} onChange={(e) => setGuestName(e.target.value)} /></div>
       <div className="grid grid-cols-2 gap-3">
         <div><Label>Phone</Label><Input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} /></div>
         <div><Label>Email</Label><Input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} /></div>
       </div>
-      <div><Label>Country</Label><Input value={guestCountry} onChange={(e) => setGuestCountry(e.target.value)} /></div>
-
-      <div className="text-xs uppercase tracking-wide text-muted-foreground pt-2">Stay details</div>
       <div>
         <Label>Rooms * (select one or more)</Label>
         <div className="border border-border rounded-md max-h-48 overflow-y-auto divide-y divide-border">
@@ -346,22 +318,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Guests</Label><Input type="number" min="1" value={numGuests} onChange={(e) => setNumGuests(e.target.value)} /></div>
         <div><Label>Total price</Label><Input type="number" step="0.01" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} /></div>
       </div>
-      <div>
-        <Label>Arrival time</Label>
-        <Input placeholder="e.g. 15:30 or Late night" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} />
-      </div>
-
-      <div className="text-xs uppercase tracking-wide text-muted-foreground pt-2">Notes</div>
-      <div>
-        <Label>Guest notes / special requests (read-only)</Label>
-        <div className="w-full min-h-[80px] px-3 py-2 rounded-md bg-muted/40 border border-border text-sm text-foreground whitespace-pre-wrap">
-          {guestNotes || <span className="text-muted-foreground italic">No special requests submitted.</span>}
-        </div>
-      </div>
-      <div>
-        <Label>Admin notes (internal only)</Label>
-        <Textarea rows={3} value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} placeholder="Internal notes visible only to staff" />
-      </div>
+      <div><Label>Notes</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
 
       <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
         <Button onClick={save} disabled={saving}>{saving ? "Saving..." : isEdit ? "Save changes" : "Create booking"}</Button>

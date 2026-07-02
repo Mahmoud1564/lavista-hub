@@ -79,8 +79,6 @@ export type Database = {
       }
       bookings: {
         Row: {
-          admin_notes: string | null
-          arrival_time: string | null
           check_in: string
           check_out: string
           created_at: string
@@ -94,8 +92,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          admin_notes?: string | null
-          arrival_time?: string | null
           check_in: string
           check_out: string
           created_at?: string
@@ -109,8 +105,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          admin_notes?: string | null
-          arrival_time?: string | null
           check_in?: string
           check_out?: string
           created_at?: string
@@ -275,7 +269,6 @@ export type Database = {
       }
       guests: {
         Row: {
-          country: string | null
           created_at: string
           email: string | null
           id: string
@@ -284,7 +277,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          country?: string | null
           created_at?: string
           email?: string | null
           id?: string
@@ -293,7 +285,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          country?: string | null
           created_at?: string
           email?: string | null
           id?: string

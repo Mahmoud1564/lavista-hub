@@ -17,6 +17,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedRoomsRouteImport } from './routes/_authenticated/rooms'
 import { Route as AuthenticatedReviewsRouteImport } from './routes/_authenticated/reviews'
 import { Route as AuthenticatedMediaRouteImport } from './routes/_authenticated/media'
+import { Route as AuthenticatedGuestsRouteImport } from './routes/_authenticated/guests'
 import { Route as AuthenticatedFaqRouteImport } from './routes/_authenticated/faq'
 import { Route as AuthenticatedExperiencesRouteImport } from './routes/_authenticated/experiences'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -63,6 +64,11 @@ const AuthenticatedMediaRoute = AuthenticatedMediaRouteImport.update({
   path: '/media',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGuestsRoute = AuthenticatedGuestsRouteImport.update({
+  id: '/guests',
+  path: '/guests',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFaqRoute = AuthenticatedFaqRouteImport.update({
   id: '/faq',
   path: '/faq',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/experiences': typeof AuthenticatedExperiencesRoute
   '/faq': typeof AuthenticatedFaqRoute
+  '/guests': typeof AuthenticatedGuestsRoute
   '/media': typeof AuthenticatedMediaRoute
   '/reviews': typeof AuthenticatedReviewsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/experiences': typeof AuthenticatedExperiencesRoute
   '/faq': typeof AuthenticatedFaqRoute
+  '/guests': typeof AuthenticatedGuestsRoute
   '/media': typeof AuthenticatedMediaRoute
   '/reviews': typeof AuthenticatedReviewsRoute
   '/rooms': typeof AuthenticatedRoomsRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/experiences': typeof AuthenticatedExperiencesRoute
   '/_authenticated/faq': typeof AuthenticatedFaqRoute
+  '/_authenticated/guests': typeof AuthenticatedGuestsRoute
   '/_authenticated/media': typeof AuthenticatedMediaRoute
   '/_authenticated/reviews': typeof AuthenticatedReviewsRoute
   '/_authenticated/rooms': typeof AuthenticatedRoomsRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/experiences'
     | '/faq'
+    | '/guests'
     | '/media'
     | '/reviews'
     | '/rooms'
@@ -169,6 +179,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/experiences'
     | '/faq'
+    | '/guests'
     | '/media'
     | '/reviews'
     | '/rooms'
@@ -185,6 +196,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/experiences'
     | '/_authenticated/faq'
+    | '/_authenticated/guests'
     | '/_authenticated/media'
     | '/_authenticated/reviews'
     | '/_authenticated/rooms'
@@ -256,6 +268,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMediaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/guests': {
+      id: '/_authenticated/guests'
+      path: '/guests'
+      fullPath: '/guests'
+      preLoaderRoute: typeof AuthenticatedGuestsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/faq': {
       id: '/_authenticated/faq'
       path: '/faq'
@@ -308,6 +327,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExperiencesRoute: typeof AuthenticatedExperiencesRoute
   AuthenticatedFaqRoute: typeof AuthenticatedFaqRoute
+  AuthenticatedGuestsRoute: typeof AuthenticatedGuestsRoute
   AuthenticatedMediaRoute: typeof AuthenticatedMediaRoute
   AuthenticatedReviewsRoute: typeof AuthenticatedReviewsRoute
   AuthenticatedRoomsRoute: typeof AuthenticatedRoomsRoute
@@ -321,6 +341,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExperiencesRoute: AuthenticatedExperiencesRoute,
   AuthenticatedFaqRoute: AuthenticatedFaqRoute,
+  AuthenticatedGuestsRoute: AuthenticatedGuestsRoute,
   AuthenticatedMediaRoute: AuthenticatedMediaRoute,
   AuthenticatedReviewsRoute: AuthenticatedReviewsRoute,
   AuthenticatedRoomsRoute: AuthenticatedRoomsRoute,
@@ -339,13 +360,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

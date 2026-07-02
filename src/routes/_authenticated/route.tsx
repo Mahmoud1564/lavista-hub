@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated")({
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/bookings", label: "Bookings", icon: CalendarDays },
+  { to: "/guests", label: "Guests", icon: Users },
   { to: "/rooms", label: "Rooms", icon: BedDouble },
   { to: "/calendar", label: "Availability", icon: CalendarRange },
   { to: "/experiences", label: "Experiences", icon: Sparkles },

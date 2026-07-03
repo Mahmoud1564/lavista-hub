@@ -144,11 +144,8 @@ function BookingsPage() {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const m: Record<string, "success" | "warning" | "danger" | "muted"> = {
-    upcoming: "warning", confirmed: "success", completed: "muted", cancelled: "danger",
-  };
-  return <Badge variant={m[status] ?? "default"}>{status}</Badge>;
+function StatusBadge({ booking }: { booking: BookingRow }) {
+  return <StatusPill checkIn={booking.check_in} checkOut={booking.check_out} rawStatus={booking.status} />;
 }
 
 function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onSaved: () => void; onCancel: () => void }) {

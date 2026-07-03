@@ -4,11 +4,9 @@ import {
   createRootRouteWithContext,
   HeadContent,
   Scripts,
-  useRouterState,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Toaster } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
 

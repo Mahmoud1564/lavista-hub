@@ -4,8 +4,9 @@ import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, Button, Input, Select, Label, Drawer, Empty, Badge, Textarea } from "@/components/admin/ui";
+import { Card, Button, Input, Select, Label, Drawer, Empty, Textarea } from "@/components/admin/ui";
 import { Plus, Search, Download, X } from "lucide-react";
+import { StatusPill, computeBookingStatus } from "@/lib/booking-status";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
   component: BookingsPage,

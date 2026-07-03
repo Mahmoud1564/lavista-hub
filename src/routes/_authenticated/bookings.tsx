@@ -346,7 +346,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
       <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
         <Button onClick={save} disabled={saving}>{saving ? "Saving..." : isEdit ? "Save changes" : "Create booking"}</Button>
         <Button variant="ghost" onClick={onCancel}>Close</Button>
-        {isEdit && status !== "cancelled" && <Button variant="outline" onClick={cancelBooking}><X className="w-4 h-4" />Cancel booking</Button>}
+        {isEdit && booking?.status !== "cancelled" && <Button variant="outline" onClick={cancelBooking}><X className="w-4 h-4" />Cancel booking</Button>}
         {isEdit && <Button variant="danger" onClick={deleteBooking}>Delete</Button>}
       </div>
     </div>

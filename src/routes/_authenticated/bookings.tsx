@@ -123,7 +123,7 @@ function BookingsPage() {
                     <td className="px-4 py-3 text-muted-foreground">{roomsLabel(b)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_in), "MMM d, yyyy")}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_out), "MMM d, yyyy")}</td>
-                    <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
+                    <td className="px-4 py-3"><StatusBadge booking={b} /></td>
                     <td className="px-4 py-3 text-right">{b.total_price ? `$${b.total_price}` : "—"}</td>
                   </tr>
                 ))}

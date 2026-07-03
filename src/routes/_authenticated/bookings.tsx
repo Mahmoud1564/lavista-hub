@@ -221,7 +221,6 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         name: guestName,
         phone: guestPhone || null,
         email: guestEmail || null,
-        country: guestCountry || null,
       };
       if (isEdit && booking?.guest) {
         await supabase.from("guests").update(guestPayload).eq("id", booking.guest.id);
@@ -236,7 +235,10 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         guest_id: gid!, room_id: roomIds[0],
         check_in: checkIn, check_out: checkOut,
         arrival_time: arrivalTime || null,
-        status, admin_notes: adminNotes || null,
+        // Preserve cancellation, otherwise keep as "upcoming" — display status
+        // is computed from dates via computeBookingStatus().
+        status: booking?.status === "cancelled" ? "cancelled" : "upcoming",
+        admin_notes: adminNotes || null,
         total_price: totalPrice ? Number(totalPrice) : null,
         num_guests: Number(numGuests) || 1,
       };

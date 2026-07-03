@@ -300,6 +300,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Phone</Label><Input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} /></div>
         <div><Label>Email</Label><Input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} /></div>
       </div>
+      <div><Label>Country</Label><Input value={guestCountry} onChange={(e) => setGuestCountry(e.target.value)} /></div>
       <div>
         <Label>Rooms * (select one or more)</Label>
         <div className="border border-border rounded-md max-h-48 overflow-y-auto divide-y divide-border">
@@ -316,9 +317,10 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         </div>
         {roomIds.length > 1 && <div className="text-[10px] text-muted-foreground mt-1">{roomIds.length} rooms selected</div>}
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div><Label>Check-in *</Label><Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} /></div>
         <div><Label>Check-out *</Label><Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /></div>
+        <div><Label>Arrival time</Label><Input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} placeholder="—" /></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div><Label>Status</Label>
@@ -332,7 +334,15 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Guests</Label><Input type="number" min="1" value={numGuests} onChange={(e) => setNumGuests(e.target.value)} /></div>
         <div><Label>Total price</Label><Input type="number" step="0.01" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} /></div>
       </div>
-      <div><Label>Notes</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+      <div>
+        <Label>Guest special request (read-only)</Label>
+        <Textarea rows={2} value={guestRequest} readOnly disabled placeholder="No special request from guest" className="opacity-80" />
+        <div className="text-[10px] text-muted-foreground mt-1">Submitted by the guest during booking. Not editable.</div>
+      </div>
+      <div>
+        <Label>Admin notes (internal)</Label>
+        <Textarea rows={3} value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} placeholder="Internal notes — never shown to the guest" />
+      </div>
 
       <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
         <Button onClick={save} disabled={saving}>{saving ? "Saving..." : isEdit ? "Save changes" : "Create booking"}</Button>

@@ -218,19 +218,27 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
       }
 
       let gid = booking?.guest_id;
+      const guestPayload = {
+        name: guestName,
+        phone: guestPhone || null,
+        email: guestEmail || null,
+        country: guestCountry || null,
+      };
       if (isEdit && booking?.guest) {
-        await supabase.from("guests").update({ name: guestName, phone: guestPhone || null, email: guestEmail || null }).eq("id", booking.guest.id);
+        await supabase.from("guests").update(guestPayload).eq("id", booking.guest.id);
         gid = booking.guest.id;
       } else {
-        const { data, error } = await supabase.from("guests").insert({ name: guestName, phone: guestPhone || null, email: guestEmail || null }).select("id").single();
+        const { data, error } = await supabase.from("guests").insert(guestPayload).select("id").single();
         if (error) throw error;
         gid = data.id;
       }
 
       const payload = {
-        guest_id: gid!, room_id: roomIds[0], // keep legacy for compat
+        guest_id: gid!, room_id: roomIds[0],
         check_in: checkIn, check_out: checkOut,
-        status, notes: notes || null, total_price: totalPrice ? Number(totalPrice) : null,
+        arrival_time: arrivalTime || null,
+        status, admin_notes: adminNotes || null,
+        total_price: totalPrice ? Number(totalPrice) : null,
         num_guests: Number(numGuests) || 1,
       };
 

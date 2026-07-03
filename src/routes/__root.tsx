@@ -65,24 +65,9 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-function PageViewTracker() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    let sid = sessionStorage.getItem("lavista_sid");
-    if (!sid) {
-      sid = crypto.randomUUID();
-      sessionStorage.setItem("lavista_sid", sid);
-    }
-    supabase.from("page_views").insert({
-      path: pathname,
-      session_id: sid,
-      referrer: document.referrer || null,
-      user_agent: navigator.userAgent.slice(0, 255),
-    }).then(() => {}, () => {});
-  }, [pathname]);
-  return null;
-}
+// PageViewTracker removed: page views are tracked by the public website
+// (separate project) which writes into the same Supabase `page_views` table.
+// The admin dashboard should never generate page-view records.
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();

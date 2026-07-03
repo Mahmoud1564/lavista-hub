@@ -155,6 +155,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   const [guestName, setGuestName] = useState(booking?.guest?.name ?? "");
   const [guestPhone, setGuestPhone] = useState(booking?.guest?.phone ?? "");
   const [guestEmail, setGuestEmail] = useState(booking?.guest?.email ?? "");
+  const [guestCountry, setGuestCountry] = useState(booking?.guest?.country ?? "");
   const initialRoomIds = useMemo(() => {
     if (booking?.booking_rooms?.length) return booking.booking_rooms.map((br) => br.room_id);
     if (booking?.room_id) return [booking.room_id];
@@ -163,8 +164,10 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   const [roomIds, setRoomIds] = useState<string[]>(initialRoomIds);
   const [checkIn, setCheckIn] = useState(booking?.check_in ?? "");
   const [checkOut, setCheckOut] = useState(booking?.check_out ?? "");
+  const [arrivalTime, setArrivalTime] = useState(booking?.arrival_time ?? "");
   const [status, setStatus] = useState(booking?.status ?? "upcoming");
-  const [notes, setNotes] = useState(booking?.notes ?? "");
+  const [guestRequest] = useState(booking?.notes ?? "");
+  const [adminNotes, setAdminNotes] = useState(booking?.admin_notes ?? "");
   const [totalPrice, setTotalPrice] = useState(booking?.total_price?.toString() ?? "");
   const [numGuests, setNumGuests] = useState(booking?.num_guests?.toString() ?? "1");
   const [saving, setSaving] = useState(false);

@@ -1,45 +1,50 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, Stat, Badge, Button, Empty } from "@/components/admin/ui";
+import { Card, Stat, Button, Empty } from "@/components/admin/ui";
+import { StatusPill } from "@/lib/booking-status";
 import { format, subDays } from "date-fns";
-import { Plus, Sparkles, BedDouble, Eye } from "lucide-react";
+import { Plus, Sparkles, BedDouble, Eye, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-function Dashboard() {
-  const today = new Date().toISOString().slice(0, 10);
-  const monthStart = new Date(); monthStart.setDate(1);
-  const monthStartIso = monthStart.toISOString();
-  const dayStartIso = new Date(today + "T00:00:00").toISOString();
-  const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
+// Admin dashboard paths — excluded so "Website Visitors" reflects only the
+// public website (separate project writing into the same page_views table).
+const ADMIN_PATH_PREFIXES = [
+  "/dashboard", "/bookings", "/auth", "/calendar", "/content",
+  "/reviews", "/settings", "/guests", "/faq", "/media",
+  "/rooms/", "/experiences/", "/reset-password",
+];
+const ADMIN_EXACT = new Set(["/rooms", "/experiences"]);
 
-  const stats = useQuery({
-    queryKey: ["dashboard-stats", today],
+function isPublicPath(p: string | null | undefined): boolean {
+  if (!p) return false;
+  if (ADMIN_EXACT.has(p)) return false;
+  return !ADMIN_PATH_PREFIXES.some((pref) => p.startsWith(pref));
+}
+
+function Dashboard() {
+  const qc = useQueryClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const dayStart = new Date(today + "T00:00:00");
+  const weekStart = subDays(new Date(), 7);
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  const seriesStart = subDays(new Date(), 30);
+
+  const bookingStats = useQuery({
+    queryKey: ["dashboard-booking-stats", today],
     queryFn: async () => {
-      const [total, upcoming, checkIns, checkOuts, occupiedRooms, totalRooms,
-             vToday, vMonth, vAll, vSeries] = await Promise.all([
+      const [total, upcoming, checkIns, checkOuts, occupiedRooms, totalRooms] = await Promise.all([
         supabase.from("bookings").select("*", { count: "exact", head: true }),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("status", "upcoming"),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("check_in", today),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("check_out", today),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).lte("check_in", today).gt("check_out", today).eq("status", "upcoming"),
+        supabase.from("bookings").select("*", { count: "exact", head: true }).gt("check_in", today).neq("status", "cancelled"),
+        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("check_in", today).neq("status", "cancelled"),
+        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("check_out", today).neq("status", "cancelled"),
+        supabase.from("bookings").select("*", { count: "exact", head: true }).lte("check_in", today).gt("check_out", today).neq("status", "cancelled"),
         supabase.from("rooms").select("*", { count: "exact", head: true }).eq("is_active", true),
-        supabase.from("page_views").select("*", { count: "exact", head: true }).gte("created_at", dayStartIso),
-        supabase.from("page_views").select("*", { count: "exact", head: true }).gte("created_at", monthStartIso),
-        supabase.from("page_views").select("*", { count: "exact", head: true }),
-        supabase.from("page_views").select("created_at").gte("created_at", thirtyDaysAgo).limit(10000),
       ]);
-      const byDay: Record<string, number> = {};
-      for (let i = 29; i >= 0; i--) {
-        byDay[subDays(new Date(), i).toISOString().slice(0, 10)] = 0;
-      }
-      (vSeries.data ?? []).forEach((r) => {
-        const d = (r.created_at as string).slice(0, 10);
-        if (d in byDay) byDay[d]++;
-      });
       return {
         total: total.count ?? 0,
         upcoming: upcoming.count ?? 0,
@@ -47,13 +52,83 @@ function Dashboard() {
         checkOutsToday: checkOuts.count ?? 0,
         occupied: occupiedRooms.count ?? 0,
         rooms: totalRooms.count ?? 0,
-        visitorsToday: vToday.count ?? 0,
-        visitorsMonth: vMonth.count ?? 0,
-        visitorsAll: vAll.count ?? 0,
+      };
+    },
+  });
+
+  const visitors = useQuery({
+    queryKey: ["dashboard-visitors"],
+    queryFn: async () => {
+      // Pull last 90 days once, aggregate client-side so we can filter admin paths.
+      const from = subDays(new Date(), 90).toISOString();
+      const { data, error } = await supabase
+        .from("page_views")
+        .select("path, created_at")
+        .gte("created_at", from)
+        .limit(10000);
+      if (error) throw error;
+      const rows = (data ?? []).filter((r) => isPublicPath(r.path as string));
+      // Also fetch the all-time total via count (server-side, excluding admin paths).
+      const orNot = ADMIN_PATH_PREFIXES.map((p) => `path.like.${p}%`).join(",");
+      const allTimeQ = await supabase
+        .from("page_views")
+        .select("*", { count: "exact", head: true })
+        .not("or", "is", null) // placeholder no-op — we use .not below
+        .not("path", "in", `(${Array.from(ADMIN_EXACT).join(",")})`)
+        .not("or", "is", null);
+      // Fallback: total via a second query using not-like chain
+      let allTime = 0;
+      try {
+        let q = supabase.from("page_views").select("*", { count: "exact", head: true });
+        for (const p of ADMIN_PATH_PREFIXES) q = q.not("path", "like", `${p}%`);
+        for (const p of ADMIN_EXACT) q = q.neq("path", p);
+        const r = await q;
+        allTime = r.count ?? 0;
+      } catch {
+        allTime = rows.length;
+      }
+      void allTimeQ;
+
+      const dayStartMs = dayStart.getTime();
+      const weekStartMs = weekStart.getTime();
+      const monthStartMs = monthStart.getTime();
+
+      let todayCount = 0, weekCount = 0, monthCount = 0;
+      const byDay: Record<string, number> = {};
+      for (let i = 29; i >= 0; i--) {
+        byDay[subDays(new Date(), i).toISOString().slice(0, 10)] = 0;
+      }
+      const seriesStartMs = seriesStart.getTime();
+      for (const r of rows) {
+        const ts = new Date(r.created_at as string).getTime();
+        if (ts >= dayStartMs) todayCount++;
+        if (ts >= weekStartMs) weekCount++;
+        if (ts >= monthStartMs) monthCount++;
+        if (ts >= seriesStartMs) {
+          const d = (r.created_at as string).slice(0, 10);
+          if (d in byDay) byDay[d]++;
+        }
+      }
+      return {
+        today: todayCount,
+        week: weekCount,
+        month: monthCount,
+        allTime,
         series: Object.entries(byDay).map(([date, count]) => ({ date, count })),
       };
     },
   });
+
+  // Realtime: refresh visitor stats when new public page_views arrive.
+  useEffect(() => {
+    const channel = supabase
+      .channel("dashboard-page-views")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "page_views" }, () => {
+        qc.invalidateQueries({ queryKey: ["dashboard-visitors"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
 
   const recent = useQuery({
     queryKey: ["recent-bookings"],
@@ -68,9 +143,10 @@ function Dashboard() {
     },
   });
 
-  const s = stats.data;
+  const s = bookingStats.data;
+  const v = visitors.data;
   const occupancy = s && s.rooms > 0 ? Math.round((s.occupied / s.rooms) * 100) : 0;
-  const maxSeries = s ? Math.max(1, ...s.series.map((p) => p.count)) : 1;
+  const maxSeries = v ? Math.max(1, ...v.series.map((p) => p.count)) : 1;
 
   return (
     <div className="space-y-6">
@@ -81,23 +157,47 @@ function Dashboard() {
         <Stat label="Check-outs Today" value={s?.checkOutsToday ?? "—"} />
       </div>
 
-      <Card className="p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Eye className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold">Website Visitors</h3>
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-primary/15 flex items-center justify-center">
+              <Eye className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Website Visitors</h3>
+              <p className="text-xs text-muted-foreground">Live traffic from your public website</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live
+          </div>
         </div>
-        <div className="grid grid-cols-3 gap-4 mb-5">
-          <Stat label="Today" value={s?.visitorsToday ?? "—"} />
-          <Stat label="This month" value={s?.visitorsMonth ?? "—"} />
-          <Stat label="All time" value={s?.visitorsAll ?? "—"} />
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <VisitorTile label="Today" value={v?.today} />
+          <VisitorTile label="This week" value={v?.week} />
+          <VisitorTile label="This month" value={v?.month} />
+          <VisitorTile label="All time" value={v?.allTime} accent />
         </div>
-        {s && (
-          <div className="flex items-end gap-1 h-32">
-            {s.series.map((p) => (
-              <div key={p.date} className="flex-1 flex flex-col items-center gap-1" title={`${p.date}: ${p.count}`}>
-                <div className="w-full bg-primary/70 hover:bg-primary rounded-t transition-colors" style={{ height: `${(p.count / maxSeries) * 100}%`, minHeight: p.count > 0 ? "2px" : "0" }} />
-              </div>
-            ))}
+
+        <div className="flex items-center gap-2 mb-3">
+          <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Visitor trend — last 30 days</span>
+        </div>
+        {v && (
+          <div className="flex items-end gap-1 h-40">
+            {v.series.map((p) => {
+              const h = (p.count / maxSeries) * 100;
+              return (
+                <div key={p.date} className="flex-1 flex flex-col items-center gap-1 group" title={`${p.date}: ${p.count} visits`}>
+                  <div
+                    className="w-full rounded-t transition-all bg-gradient-to-t from-primary/50 to-primary group-hover:from-primary group-hover:to-primary"
+                    style={{ height: `${h}%`, minHeight: p.count > 0 ? "3px" : "1px" }}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
         <div className="flex justify-between text-[10px] text-muted-foreground mt-2">
@@ -141,7 +241,7 @@ function Dashboard() {
                       <td className="py-3">{b.guest?.name ?? "—"}</td>
                       <td className="py-3 text-muted-foreground">{b.room?.name ?? "—"}</td>
                       <td className="py-3 text-muted-foreground">{format(new Date(b.check_in), "MMM d")}</td>
-                      <td className="py-3"><StatusBadge status={b.status} /></td>
+                      <td className="py-3"><StatusPill checkIn={b.check_in} checkOut={b.check_out} rawStatus={b.status} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -163,9 +263,13 @@ function Dashboard() {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, "success" | "warning" | "danger" | "muted"> = {
-    upcoming: "warning", confirmed: "success", completed: "muted", cancelled: "danger",
-  };
-  return <Badge variant={map[status] ?? "default"}>{status}</Badge>;
+function VisitorTile({ label, value, accent }: { label: string; value: number | undefined; accent?: boolean }) {
+  return (
+    <div className={`rounded-lg border border-border p-4 ${accent ? "bg-primary/5" : "bg-background/40"}`}>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`text-2xl font-semibold mt-1 ${accent ? "text-primary" : "text-foreground"}`}>
+        {value ?? "—"}
+      </div>
+    </div>
+  );
 }

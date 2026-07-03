@@ -36,7 +36,7 @@ function BookingsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, check_in, check_out, status, notes, admin_notes, arrival_time, total_price, created_at, guest_id, room_id, num_guests, guest:guests(id, name, phone, email, country), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))")
+        .select("id, check_in, check_out, status, notes, admin_notes, arrival_time, total_price, created_at, guest_id, room_id, num_guests, guest:guests(id, name, phone, email), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as BookingRow[];

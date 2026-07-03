@@ -15,9 +15,10 @@ type BookedRoom = { id: string; room_id: string; price_per_night: number | null;
 
 type BookingRow = {
   id: string; check_in: string; check_out: string; status: string;
-  notes: string | null; total_price: number | null; created_at: string;
+  notes: string | null; admin_notes: string | null; arrival_time: string | null;
+  total_price: number | null; created_at: string;
   guest_id: string | null; room_id: string | null; num_guests: number | null;
-  guest: { id: string; name: string; phone: string | null; email: string | null } | null;
+  guest: { id: string; name: string; phone: string | null; email: string | null; country: string | null } | null;
   room: { id: string; name: string; price: number } | null;
   booking_rooms: BookedRoom[];
 };
@@ -34,7 +35,7 @@ function BookingsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, check_in, check_out, status, notes, total_price, created_at, guest_id, room_id, num_guests, guest:guests(id, name, phone, email), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))")
+        .select("id, check_in, check_out, status, notes, admin_notes, arrival_time, total_price, created_at, guest_id, room_id, num_guests, guest:guests(id, name, phone, email, country), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as BookingRow[];
@@ -101,7 +102,8 @@ function BookingsPage() {
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted-foreground border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Guest</th>
+                  <th className="px-4 py-3 font-medium">Booking ID</th>
+                  <th className="px-4 py-3 font-medium">Guest name</th>
                   <th className="px-4 py-3 font-medium">Rooms</th>
                   <th className="px-4 py-3 font-medium">Check-in</th>
                   <th className="px-4 py-3 font-medium">Check-out</th>
@@ -112,9 +114,10 @@ function BookingsPage() {
               <tbody>
                 {filtered.map((b) => (
                   <tr key={b.id} onClick={() => setSelected(b)} className="border-b border-border/50 last:border-0 hover:bg-accent/40 cursor-pointer">
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{b.id.slice(0, 8)}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium">{b.guest?.name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground">{b.guest?.phone ?? ""}</div>
+                      <div className="text-xs text-muted-foreground">{b.guest?.phone ?? b.guest?.email ?? ""}</div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{roomsLabel(b)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_in), "MMM d, yyyy")}</td>
@@ -152,6 +155,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   const [guestName, setGuestName] = useState(booking?.guest?.name ?? "");
   const [guestPhone, setGuestPhone] = useState(booking?.guest?.phone ?? "");
   const [guestEmail, setGuestEmail] = useState(booking?.guest?.email ?? "");
+  const [guestCountry, setGuestCountry] = useState(booking?.guest?.country ?? "");
   const initialRoomIds = useMemo(() => {
     if (booking?.booking_rooms?.length) return booking.booking_rooms.map((br) => br.room_id);
     if (booking?.room_id) return [booking.room_id];
@@ -160,8 +164,10 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   const [roomIds, setRoomIds] = useState<string[]>(initialRoomIds);
   const [checkIn, setCheckIn] = useState(booking?.check_in ?? "");
   const [checkOut, setCheckOut] = useState(booking?.check_out ?? "");
+  const [arrivalTime, setArrivalTime] = useState(booking?.arrival_time ?? "");
   const [status, setStatus] = useState(booking?.status ?? "upcoming");
-  const [notes, setNotes] = useState(booking?.notes ?? "");
+  const [guestRequest] = useState(booking?.notes ?? "");
+  const [adminNotes, setAdminNotes] = useState(booking?.admin_notes ?? "");
   const [totalPrice, setTotalPrice] = useState(booking?.total_price?.toString() ?? "");
   const [numGuests, setNumGuests] = useState(booking?.num_guests?.toString() ?? "1");
   const [saving, setSaving] = useState(false);
@@ -212,19 +218,27 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
       }
 
       let gid = booking?.guest_id;
+      const guestPayload = {
+        name: guestName,
+        phone: guestPhone || null,
+        email: guestEmail || null,
+        country: guestCountry || null,
+      };
       if (isEdit && booking?.guest) {
-        await supabase.from("guests").update({ name: guestName, phone: guestPhone || null, email: guestEmail || null }).eq("id", booking.guest.id);
+        await supabase.from("guests").update(guestPayload).eq("id", booking.guest.id);
         gid = booking.guest.id;
       } else {
-        const { data, error } = await supabase.from("guests").insert({ name: guestName, phone: guestPhone || null, email: guestEmail || null }).select("id").single();
+        const { data, error } = await supabase.from("guests").insert(guestPayload).select("id").single();
         if (error) throw error;
         gid = data.id;
       }
 
       const payload = {
-        guest_id: gid!, room_id: roomIds[0], // keep legacy for compat
+        guest_id: gid!, room_id: roomIds[0],
         check_in: checkIn, check_out: checkOut,
-        status, notes: notes || null, total_price: totalPrice ? Number(totalPrice) : null,
+        arrival_time: arrivalTime || null,
+        status, admin_notes: adminNotes || null,
+        total_price: totalPrice ? Number(totalPrice) : null,
         num_guests: Number(numGuests) || 1,
       };
 
@@ -286,6 +300,7 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Phone</Label><Input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} /></div>
         <div><Label>Email</Label><Input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} /></div>
       </div>
+      <div><Label>Country</Label><Input value={guestCountry} onChange={(e) => setGuestCountry(e.target.value)} /></div>
       <div>
         <Label>Rooms * (select one or more)</Label>
         <div className="border border-border rounded-md max-h-48 overflow-y-auto divide-y divide-border">
@@ -302,9 +317,10 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         </div>
         {roomIds.length > 1 && <div className="text-[10px] text-muted-foreground mt-1">{roomIds.length} rooms selected</div>}
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div><Label>Check-in *</Label><Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} /></div>
         <div><Label>Check-out *</Label><Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /></div>
+        <div><Label>Arrival time</Label><Input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} placeholder="—" /></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div><Label>Status</Label>
@@ -318,7 +334,15 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Guests</Label><Input type="number" min="1" value={numGuests} onChange={(e) => setNumGuests(e.target.value)} /></div>
         <div><Label>Total price</Label><Input type="number" step="0.01" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} /></div>
       </div>
-      <div><Label>Notes</Label><Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
+      <div>
+        <Label>Guest special request (read-only)</Label>
+        <Textarea rows={2} value={guestRequest} readOnly disabled placeholder="No special request from guest" className="opacity-80" />
+        <div className="text-[10px] text-muted-foreground mt-1">Submitted by the guest during booking. Not editable.</div>
+      </div>
+      <div>
+        <Label>Admin notes (internal)</Label>
+        <Textarea rows={3} value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} placeholder="Internal notes — never shown to the guest" />
+      </div>
 
       <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
         <Button onClick={save} disabled={saving}>{saving ? "Saving..." : isEdit ? "Save changes" : "Create booking"}</Button>

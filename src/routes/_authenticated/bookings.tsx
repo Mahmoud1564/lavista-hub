@@ -301,7 +301,6 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Phone</Label><Input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} /></div>
         <div><Label>Email</Label><Input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} /></div>
       </div>
-      <div><Label>Country</Label><Input value={guestCountry} onChange={(e) => setGuestCountry(e.target.value)} /></div>
       <div>
         <Label>Rooms * (select one or more)</Label>
         <div className="border border-border rounded-md max-h-48 overflow-y-auto divide-y divide-border">
@@ -323,18 +322,17 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Check-out *</Label><Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /></div>
         <div><Label>Arrival time</Label><Input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} placeholder="—" /></div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div><Label>Status</Label>
-          <Select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="upcoming">Upcoming</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </Select>
-        </div>
+      <div className="grid grid-cols-2 gap-3">
         <div><Label>Guests</Label><Input type="number" min="1" value={numGuests} onChange={(e) => setNumGuests(e.target.value)} /></div>
         <div><Label>Total price</Label><Input type="number" step="0.01" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} /></div>
       </div>
+      {booking && (
+        <div>
+          <Label>Status (auto-calculated)</Label>
+          <div className="pt-1"><StatusPill checkIn={checkIn || booking.check_in} checkOut={checkOut || booking.check_out} rawStatus={booking.status} /></div>
+          <div className="text-[10px] text-muted-foreground mt-1">Status updates automatically based on the booking dates. Use "Cancel booking" below to mark as cancelled.</div>
+        </div>
+      )}
       <div>
         <Label>Guest special request (read-only)</Label>
         <Textarea rows={2} value={guestRequest} readOnly disabled placeholder="No special request from guest" className="opacity-80" />

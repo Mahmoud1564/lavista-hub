@@ -92,8 +92,8 @@ function BookingsPage() {
         <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="sm:w-44">
           <option value="">All statuses</option>
           <option value="upcoming">Upcoming</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="completed">Completed</option>
+          <option value="checked_in">Checked in</option>
+          <option value="checked_out">Checked out</option>
           <option value="cancelled">Cancelled</option>
         </Select>
         <Button variant="outline" onClick={exportCsv}><Download className="w-4 h-4" />Export</Button>

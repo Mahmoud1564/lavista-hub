@@ -46,7 +46,10 @@ function BookingsPage() {
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return bookings.filter((b) => {
-      if (statusFilter && b.status !== statusFilter) return false;
+      if (statusFilter) {
+        const s = computeBookingStatus(b.check_in, b.check_out, b.status);
+        if (s !== statusFilter) return false;
+      }
       if (!q) return true;
       return (
         b.id.toLowerCase().includes(q) ||

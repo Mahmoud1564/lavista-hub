@@ -102,7 +102,8 @@ function BookingsPage() {
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted-foreground border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Guest</th>
+                  <th className="px-4 py-3 font-medium">Booking ID</th>
+                  <th className="px-4 py-3 font-medium">Guest name</th>
                   <th className="px-4 py-3 font-medium">Rooms</th>
                   <th className="px-4 py-3 font-medium">Check-in</th>
                   <th className="px-4 py-3 font-medium">Check-out</th>
@@ -113,9 +114,10 @@ function BookingsPage() {
               <tbody>
                 {filtered.map((b) => (
                   <tr key={b.id} onClick={() => setSelected(b)} className="border-b border-border/50 last:border-0 hover:bg-accent/40 cursor-pointer">
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{b.id.slice(0, 8)}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium">{b.guest?.name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground">{b.guest?.phone ?? ""}</div>
+                      <div className="text-xs text-muted-foreground">{b.guest?.phone ?? b.guest?.email ?? ""}</div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{roomsLabel(b)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_in), "MMM d, yyyy")}</td>

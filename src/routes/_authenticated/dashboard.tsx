@@ -68,15 +68,7 @@ function Dashboard() {
         .limit(10000);
       if (error) throw error;
       const rows = (data ?? []).filter((r) => isPublicPath(r.path as string));
-      // Also fetch the all-time total via count (server-side, excluding admin paths).
-      const orNot = ADMIN_PATH_PREFIXES.map((p) => `path.like.${p}%`).join(",");
-      const allTimeQ = await supabase
-        .from("page_views")
-        .select("*", { count: "exact", head: true })
-        .not("or", "is", null) // placeholder no-op — we use .not below
-        .not("path", "in", `(${Array.from(ADMIN_EXACT).join(",")})`)
-        .not("or", "is", null);
-      // Fallback: total via a second query using not-like chain
+      // All-time public visitors via server-side count, excluding admin paths.
       let allTime = 0;
       try {
         let q = supabase.from("page_views").select("*", { count: "exact", head: true });
@@ -87,7 +79,6 @@ function Dashboard() {
       } catch {
         allTime = rows.length;
       }
-      void allTimeQ;
 
       const dayStartMs = dayStart.getTime();
       const weekStartMs = weekStart.getTime();

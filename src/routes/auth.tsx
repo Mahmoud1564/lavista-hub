@@ -132,7 +132,7 @@ function AuthPage() {
       <div className="w-full max-w-sm bg-card border border-border rounded-xl p-8 shadow-lg">
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground font-bold text-xl mb-3">L</div>
-          <h1 className="text-2xl font-semibold">Lavista Admin</h1>
+          <h1 className="text-2xl font-semibold">Lavista Admin — Staff Login</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === "signin" ? "Sign in to continue" : mode === "signup" ? "Create staff account" : "Reset your password"}
           </p>

@@ -155,7 +155,7 @@ function Dashboard() {
               <Eye className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold">Website Visitors</h3>
+              <h2 className="font-semibold">Website Visitors</h2>
               <p className="text-xs text-muted-foreground">Live traffic from your public website</p>
             </div>
           </div>
@@ -212,7 +212,7 @@ function Dashboard() {
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Recent Bookings</h3>
+            <h2 className="font-semibold">Recent Bookings</h2>
             <Link to="/bookings" className="text-xs text-primary hover:underline">View all</Link>
           </div>
           {recent.data && recent.data.length > 0 ? (
@@ -242,7 +242,7 @@ function Dashboard() {
         </Card>
 
         <Card className="p-5">
-          <h3 className="font-semibold mb-4">Quick Actions</h3>
+          <h2 className="font-semibold mb-4">Quick Actions</h2>
           <div className="space-y-2">
             <Link to="/rooms"><Button variant="outline" className="w-full justify-start"><BedDouble className="w-4 h-4" />Add a room</Button></Link>
             <Link to="/experiences"><Button variant="outline" className="w-full justify-start"><Sparkles className="w-4 h-4" />Add an experience</Button></Link>

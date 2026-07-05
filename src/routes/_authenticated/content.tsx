@@ -93,7 +93,7 @@ function SectionCard({
 
   return (
     <Card className="p-5">
-      <h3 className="font-semibold mb-4">{section.title}</h3>
+      <h2 className="font-semibold mb-4">{section.title}</h2>
       <div className="space-y-3">
         {section.fields.map((f) => (
           <div key={f.name}>

@@ -283,7 +283,7 @@ function RoomForm({ room, onSaved }: { room?: Room; onSaved: () => void }) {
               <button type="button" onClick={() => setExistingThumb(img)} className={`absolute top-1 left-1 rounded-full p-1 ${img.is_thumbnail ? "bg-primary text-primary-foreground" : "bg-background/70 text-foreground opacity-0 group-hover:opacity-100"}`}>
                 <Star className="w-3 h-3" />
               </button>
-              <button type="button" onClick={() => removeExisting(img)} className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100">
+              <button type="button" onClick={() => removeExisting(img)} aria-label="Remove image" className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100">
                 <X className="w-3 h-3" />
               </button>
             </div>
@@ -295,7 +295,7 @@ function RoomForm({ room, onSaved }: { room?: Room; onSaved: () => void }) {
               <button type="button" onClick={() => setPendingThumb(idx)} className={`absolute top-1 left-1 rounded-full p-1 ${p.isThumbnail ? "bg-primary text-primary-foreground" : "bg-background/70 opacity-0 group-hover:opacity-100"}`}>
                 <Star className="w-3 h-3" />
               </button>
-              <button type="button" onClick={() => removePending(idx)} className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100">
+              <button type="button" onClick={() => removePending(idx)} aria-label="Remove image" className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100">
                 <X className="w-3 h-3" />
               </button>
             </div>

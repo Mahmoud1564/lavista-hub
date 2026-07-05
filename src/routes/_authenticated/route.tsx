@@ -107,7 +107,7 @@ function AuthedShell() {
 
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
         <header className="h-16 px-4 lg:px-8 flex items-center gap-3 border-b border-border bg-card/30 backdrop-blur sticky top-0 z-20">
-          <button className="lg:hidden p-2 rounded-md hover:bg-accent" onClick={() => setOpen(!open)}>
+          <button className="lg:hidden p-2 rounded-md hover:bg-accent" onClick={() => setOpen(!open)} aria-label={open ? "Close menu" : "Open menu"}>
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <h1 className="text-lg font-semibold capitalize">

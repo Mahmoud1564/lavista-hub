@@ -67,12 +67,12 @@ function MediaPage() {
           {files.map((f) => (
             <Card key={f.name} className="overflow-hidden group">
               <div className="aspect-square bg-muted">
-                {f.url && <img src={f.url} alt={f.name} className="w-full h-full object-cover" />}
+                {f.url && <img src={f.url} alt="" className="w-full h-full object-cover" />}
               </div>
               <div className="p-2 flex items-center justify-between gap-1">
                 <span className="text-xs text-muted-foreground truncate flex-1" title={f.name}>{f.name}</span>
-                <Button size="sm" variant="ghost" onClick={() => copyPath(f.name)}><Copy className="w-3.5 h-3.5" /></Button>
-                <Button size="sm" variant="ghost" onClick={() => del(f.name)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                <Button size="sm" variant="ghost" aria-label="Copy path" onClick={() => copyPath(f.name)}><Copy className="w-3.5 h-3.5" /></Button>
+                <Button size="sm" variant="ghost" aria-label="Delete image" onClick={() => del(f.name)}><Trash2 className="w-3.5 h-3.5" /></Button>
               </div>
             </Card>
           ))}

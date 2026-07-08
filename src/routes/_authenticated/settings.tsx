@@ -1,75 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, Button, Input, Label, Badge } from "@/components/admin/ui";
+import { Card, Button, Badge } from "@/components/admin/ui";
 import { useAuth } from "@/hooks/use-auth";
-import { Upload, Check, X as XIcon } from "lucide-react";
-import { uploadFile, getSignedUrls } from "@/lib/storage";
-
-type Row = { id: string; key: string; value: Record<string, unknown> };
-const LOGO_BUCKET = "branding";
-
-const SECTIONS: { key: string; title: string; fields: { name: string; label: string }[] }[] = [
-  { key: "hotel", title: "Hotel Info", fields: [
-    { name: "name", label: "Hotel name" },
-    { name: "tagline", label: "Tagline" },
-  ]},
-  { key: "contact", title: "Contact (used everywhere)", fields: [
-    { name: "phone", label: "Phone" },
-    { name: "email", label: "Email" },
-    { name: "address", label: "Address" },
-    { name: "whatsapp", label: "WhatsApp (e.g. +1234567890)" },
-  ]},
-  { key: "social", title: "Social Links", fields: [
-    { name: "instagram", label: "Instagram URL" },
-    { name: "facebook", label: "Facebook URL" },
-    { name: "twitter", label: "Twitter URL" },
-    { name: "tiktok", label: "TikTok URL" },
-  ]},
-  { key: "footer", title: "Footer", fields: [
-    { name: "tagline", label: "Footer tagline" },
-    { name: "copyright", label: "Copyright text" },
-  ]},
-  { key: "booking", title: "Booking Settings", fields: [
-    { name: "min_stay_nights", label: "Min stay (nights)" },
-    { name: "max_stay_nights", label: "Max stay (nights)" },
-    { name: "cancellation_window_hours", label: "Free cancellation window (hours)" },
-  ]},
-  { key: "currency", title: "Currency", fields: [
-    { name: "code", label: "Currency code (e.g. USD)" },
-    { name: "symbol", label: "Symbol (e.g. $)" },
-  ]},
-];
+import { Check, X as XIcon } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
 });
 
 function SettingsPage() {
-  const qc = useQueryClient();
-  const { data: rows = [] } = useQuery({
-    queryKey: ["settings"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("settings").select("*");
-      if (error) throw error;
-      return (data ?? []) as Row[];
-    },
-  });
-
   return (
     <div className="space-y-4">
       <PendingApprovals />
-      <BrandingLogo row={rows.find((r) => r.key === "branding") ?? null} onSaved={() => qc.invalidateQueries({ queryKey: ["settings"] })} />
-      {SECTIONS.map((s) => (
-        <SettingsSection key={s.key} section={s} row={rows.find((r) => r.key === s.key) ?? null}
-          onSaved={() => qc.invalidateQueries({ queryKey: ["settings"] })} />
-      ))}
       <RolesAdmin />
     </div>
   );
 }
+
 
 function BrandingLogo({ row, onSaved }: { row: Row | null; onSaved: () => void }) {
   const [path, setPath] = useState<string>("");

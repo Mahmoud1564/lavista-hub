@@ -66,11 +66,15 @@ function BookingsPage() {
     return b.room?.name ?? "—";
   }
 
+  function nightsBetween(ci: string, co: string) {
+    return Math.max(0, Math.round((new Date(co).getTime() - new Date(ci).getTime()) / 86400000));
+  }
+
   function exportCsv() {
-    const headers = ["id", "guest", "phone", "rooms", "check_in", "check_out", "status", "total"];
+    const headers = ["id", "guest", "phone", "rooms", "check_in", "check_out", "nights", "status", "total"];
     const rows = filtered.map((b) => [
       b.id, b.guest?.name ?? "", b.guest?.phone ?? "", roomsLabel(b),
-      b.check_in, b.check_out, b.status, b.total_price ?? "",
+      b.check_in, b.check_out, nightsBetween(b.check_in, b.check_out), b.status, b.total_price ?? "",
     ]);
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -111,6 +115,7 @@ function BookingsPage() {
                   <th className="px-4 py-3 font-medium">Rooms</th>
                   <th className="px-4 py-3 font-medium">Check-in</th>
                   <th className="px-4 py-3 font-medium">Check-out</th>
+                  <th className="px-4 py-3 font-medium text-right">Nights</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium text-right">Total</th>
                 </tr>
@@ -126,6 +131,7 @@ function BookingsPage() {
                     <td className="px-4 py-3 text-muted-foreground">{roomsLabel(b)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_in), "MMM d, yyyy")}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_out), "MMM d, yyyy")}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">{nightsBetween(b.check_in, b.check_out)}</td>
                     <td className="px-4 py-3"><StatusBadge booking={b} /></td>
                     <td className="px-4 py-3 text-right">{b.total_price ? `$${b.total_price}` : "—"}</td>
                   </tr>
@@ -322,6 +328,11 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Check-out *</Label><Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /></div>
         <div><Label>Arrival time</Label><Input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} placeholder="—" /></div>
       </div>
+      {checkIn && checkOut && new Date(checkOut) > new Date(checkIn) && (
+        <div className="text-xs text-muted-foreground">
+          Duration: <span className="text-foreground font-medium">{Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)} night(s)</span>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div><Label>Guests</Label><Input type="number" min="1" value={numGuests} onChange={(e) => setNumGuests(e.target.value)} /></div>
         <div><Label>Total price</Label><Input type="number" step="0.01" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} /></div>

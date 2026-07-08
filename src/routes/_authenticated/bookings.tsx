@@ -66,11 +66,15 @@ function BookingsPage() {
     return b.room?.name ?? "—";
   }
 
+  function nightsBetween(ci: string, co: string) {
+    return Math.max(0, Math.round((new Date(co).getTime() - new Date(ci).getTime()) / 86400000));
+  }
+
   function exportCsv() {
-    const headers = ["id", "guest", "phone", "rooms", "check_in", "check_out", "status", "total"];
+    const headers = ["id", "guest", "phone", "rooms", "check_in", "check_out", "nights", "status", "total"];
     const rows = filtered.map((b) => [
       b.id, b.guest?.name ?? "", b.guest?.phone ?? "", roomsLabel(b),
-      b.check_in, b.check_out, b.status, b.total_price ?? "",
+      b.check_in, b.check_out, nightsBetween(b.check_in, b.check_out), b.status, b.total_price ?? "",
     ]);
     const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });

@@ -115,6 +115,7 @@ function BookingsPage() {
                   <th className="px-4 py-3 font-medium">Rooms</th>
                   <th className="px-4 py-3 font-medium">Check-in</th>
                   <th className="px-4 py-3 font-medium">Check-out</th>
+                  <th className="px-4 py-3 font-medium text-right">Nights</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium text-right">Total</th>
                 </tr>
@@ -130,6 +131,7 @@ function BookingsPage() {
                     <td className="px-4 py-3 text-muted-foreground">{roomsLabel(b)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_in), "MMM d, yyyy")}</td>
                     <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_out), "MMM d, yyyy")}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">{nightsBetween(b.check_in, b.check_out)}</td>
                     <td className="px-4 py-3"><StatusBadge booking={b} /></td>
                     <td className="px-4 py-3 text-right">{b.total_price ? `$${b.total_price}` : "—"}</td>
                   </tr>

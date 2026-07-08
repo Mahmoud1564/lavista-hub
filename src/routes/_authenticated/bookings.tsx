@@ -328,6 +328,11 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         <div><Label>Check-out *</Label><Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /></div>
         <div><Label>Arrival time</Label><Input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} placeholder="—" /></div>
       </div>
+      {checkIn && checkOut && new Date(checkOut) > new Date(checkIn) && (
+        <div className="text-xs text-muted-foreground">
+          Duration: <span className="text-foreground font-medium">{Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)} night(s)</span>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <div><Label>Guests</Label><Input type="number" min="1" value={numGuests} onChange={(e) => setNumGuests(e.target.value)} /></div>
         <div><Label>Total price</Label><Input type="number" step="0.01" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} /></div>

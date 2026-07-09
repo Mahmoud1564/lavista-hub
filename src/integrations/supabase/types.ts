@@ -303,6 +303,33 @@ export type Database = {
         }
         Relationships: []
       }
+      online_visitors: {
+        Row: {
+          created_at: string
+          current_path: string | null
+          id: string
+          last_seen: string
+          session_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_path?: string | null
+          id?: string
+          last_seen?: string
+          session_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_path?: string | null
+          id?: string
+          last_seen?: string
+          session_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       page_views: {
         Row: {
           created_at: string

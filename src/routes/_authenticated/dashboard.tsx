@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, Stat, Button, Empty } from "@/components/admin/ui";
 import { StatusPill } from "@/lib/booking-status";
 import { format, subDays } from "date-fns";
-import { Plus, Sparkles, BedDouble, Eye, TrendingUp } from "lucide-react";
+import { Plus, Sparkles, BedDouble, Eye, TrendingUp, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -121,6 +121,32 @@ function Dashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
+  // Currently-online visitors (last 60s heartbeat).
+  const online = useQuery({
+    queryKey: ["online-visitors"],
+    queryFn: async () => {
+      const cutoff = new Date(Date.now() - 60_000).toISOString();
+      const { count, error } = await supabase
+        .from("online_visitors")
+        .select("*", { count: "exact", head: true })
+        .gt("last_seen", cutoff);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    refetchInterval: 15_000,
+  });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("dashboard-online-visitors")
+      .on("postgres_changes", { event: "*", schema: "public", table: "online_visitors" }, () => {
+        qc.invalidateQueries({ queryKey: ["online-visitors"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
+
+
   const recent = useQuery({
     queryKey: ["recent-bookings"],
     queryFn: async () => {
@@ -147,6 +173,26 @@ function Dashboard() {
         <Stat label="Check-ins Today" value={s?.checkInsToday ?? "—"} />
         <Stat label="Check-outs Today" value={s?.checkOutsToday ?? "—"} />
       </div>
+
+      <Card className="p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+            <Users className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <h2 className="font-semibold">Currently Online</h2>
+            </div>
+            <p className="text-xs text-muted-foreground">Live visitors on your public website (last 60s)</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-4xl font-bold text-emerald-400 tabular-nums">{online.data ?? "—"}</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Online now</div>
+        </div>
+      </Card>
+
 
       <Card className="p-6">
         <div className="flex items-center justify-between mb-5">

@@ -174,6 +174,26 @@ function Dashboard() {
         <Stat label="Check-outs Today" value={s?.checkOutsToday ?? "—"} />
       </div>
 
+      <Card className="p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+            <Users className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <h2 className="font-semibold">Currently Online</h2>
+            </div>
+            <p className="text-xs text-muted-foreground">Live visitors on your public website (last 60s)</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-4xl font-bold text-emerald-400 tabular-nums">{online.data ?? "—"}</div>
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Online now</div>
+        </div>
+      </Card>
+
+
       <Card className="p-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">

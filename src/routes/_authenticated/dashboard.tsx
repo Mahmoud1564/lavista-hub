@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, Stat, Button, Empty } from "@/components/admin/ui";
 import { StatusPill } from "@/lib/booking-status";
 import { format, subDays } from "date-fns";
-import { Plus, Sparkles, BedDouble, Eye, TrendingUp } from "lucide-react";
+import { Plus, Sparkles, BedDouble, Eye, TrendingUp, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,

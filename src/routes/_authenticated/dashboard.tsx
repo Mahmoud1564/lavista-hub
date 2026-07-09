@@ -121,6 +121,32 @@ function Dashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
+  // Currently-online visitors (last 60s heartbeat).
+  const online = useQuery({
+    queryKey: ["online-visitors"],
+    queryFn: async () => {
+      const cutoff = new Date(Date.now() - 60_000).toISOString();
+      const { count, error } = await supabase
+        .from("online_visitors")
+        .select("*", { count: "exact", head: true })
+        .gt("last_seen", cutoff);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    refetchInterval: 15_000,
+  });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("dashboard-online-visitors")
+      .on("postgres_changes", { event: "*", schema: "public", table: "online_visitors" }, () => {
+        qc.invalidateQueries({ queryKey: ["online-visitors"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
+
+
   const recent = useQuery({
     queryKey: ["recent-bookings"],
     queryFn: async () => {

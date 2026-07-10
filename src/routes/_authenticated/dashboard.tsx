@@ -211,7 +211,7 @@ function Dashboard() {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-4xl font-bold text-emerald-400 tabular-nums">{online.data ?? "—"}</div>
+          <div className="text-4xl font-bold text-emerald-400 tabular-nums">{onlineCount ?? "—"}</div>
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Online now</div>
         </div>
       </Card>

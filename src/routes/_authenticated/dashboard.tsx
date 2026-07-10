@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, Stat, Button, Empty } from "@/components/admin/ui";
 import { StatusPill } from "@/lib/booking-status";
@@ -121,27 +121,49 @@ function Dashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
-  // Currently-online visitors (distinct session_id in last 60s).
-  const online = useQuery({
-    queryKey: ["online-visitors"],
+  // Currently-online visitors: fetch recent presence rows, then derive the
+  // count locally every second so leavers drop off within ~60s of their last
+  // heartbeat even between server polls.
+  const onlineRows = useQuery({
+    queryKey: ["online-visitors-rows"],
     queryFn: async () => {
-      const cutoff = new Date(Date.now() - 60_000).toISOString();
+      // Fetch a slightly wider window than the display cutoff so the local
+      // ticker has rows to age out even if realtime misses an update.
+      const cutoff = new Date(Date.now() - 120_000).toISOString();
       const { data, error } = await supabase
         .from("online_visitors")
-        .select("session_id")
+        .select("session_id, last_seen")
         .gt("last_seen", cutoff);
       if (error) throw error;
-      const unique = new Set((data ?? []).map((r) => r.session_id));
-      return unique.size;
+      return (data ?? []) as { session_id: string; last_seen: string }[];
     },
-    refetchInterval: 15_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
+
+  // Local tick forces a re-derivation of the count as rows age past 60s.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const onlineCount = useMemo(() => {
+    if (!onlineRows.data) return undefined;
+    const cutoff = now - 60_000;
+    const unique = new Set<string>();
+    for (const r of onlineRows.data) {
+      if (new Date(r.last_seen).getTime() > cutoff) unique.add(r.session_id);
+    }
+    return unique.size;
+  }, [onlineRows.data, now]);
 
   useEffect(() => {
     const channel = supabase
       .channel("dashboard-online-visitors")
       .on("postgres_changes", { event: "*", schema: "public", table: "online_visitors" }, () => {
-        qc.invalidateQueries({ queryKey: ["online-visitors"] });
+        qc.invalidateQueries({ queryKey: ["online-visitors-rows"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -189,7 +211,7 @@ function Dashboard() {
           </div>
         </div>
         <div className="text-right">
-          <div className="text-4xl font-bold text-emerald-400 tabular-nums">{online.data ?? "—"}</div>
+          <div className="text-4xl font-bold text-emerald-400 tabular-nums">{onlineCount ?? "—"}</div>
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Online now</div>
         </div>
       </Card>

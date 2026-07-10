@@ -121,17 +121,18 @@ function Dashboard() {
     return () => { supabase.removeChannel(channel); };
   }, [qc]);
 
-  // Currently-online visitors (last 60s heartbeat).
+  // Currently-online visitors (distinct session_id in last 60s).
   const online = useQuery({
     queryKey: ["online-visitors"],
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 60_000).toISOString();
-      const { count, error } = await supabase
+      const { data, error } = await supabase
         .from("online_visitors")
-        .select("*", { count: "exact", head: true })
+        .select("session_id")
         .gt("last_seen", cutoff);
       if (error) throw error;
-      return count ?? 0;
+      const unique = new Set((data ?? []).map((r) => r.session_id));
+      return unique.size;
     },
     refetchInterval: 15_000,
   });

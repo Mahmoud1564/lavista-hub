@@ -11,45 +11,38 @@ import { uploadFile, deleteFile } from "@/lib/storage";
 const BUCKET = "review-images";
 const REVIEW_TEXT_MAX = 240;
 
-const AVATAR_COLORS = [
-  "#f97316", "#ef4444", "#8b5cf6", "#3b82f6", "#14b8a6",
-  "#22c55e", "#eab308", "#ec4899", "#6366f1", "#06b6d4",
-];
-
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
-  return (first + last).toUpperCase();
-}
-
-function colorForName(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
 function truncateText(text: string | null, max: number): string {
   if (!text) return "";
   if (text.length <= max) return text;
   return `${text.slice(0, max).trimEnd()}…`;
 }
 
+// Generic flat "no photo" placeholder — a black silhouette user glyph on a
+// light neutral circle, matching the classic default-profile icon look.
+function PersonSilhouette({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <circle cx="12" cy="8.5" r="3.6" fill="currentColor" />
+      <path d="M4 20.2c0-4.6 3.6-7.4 8-7.4s8 2.8 8 7.4" fill="currentColor" />
+    </svg>
+  );
+}
+
 function GuestAvatar({ name, imgUrl, className }: { name: string; imgUrl?: string | null; className?: string }) {
   if (imgUrl) {
     return (
       <div className={`rounded-full overflow-hidden flex-shrink-0 ${className ?? ""}`}>
-        <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+        <img src={imgUrl} alt={name} className="w-full h-full object-cover" />
       </div>
     );
   }
   return (
     <div
-      className={`rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center text-white font-semibold ${className ?? ""}`}
-      style={{ backgroundColor: colorForName(name || "?") }}
+      className={`rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-muted ${className ?? ""}`}
+      role="img"
+      aria-label={name}
     >
-      {getInitials(name)}
+      <PersonSilhouette className="w-[68%] h-[68%] text-muted-foreground/70" />
     </div>
   );
 }

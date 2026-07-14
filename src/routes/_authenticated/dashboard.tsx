@@ -6,6 +6,7 @@ import { Card, Stat, Button, Empty } from "@/components/admin/ui";
 import { StatusPill } from "@/lib/booking-status";
 import { format, subDays } from "date-fns";
 import { Plus, Sparkles, BedDouble, Eye, TrendingUp } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -137,7 +138,6 @@ function Dashboard() {
   const s = bookingStats.data;
   const v = visitors.data;
   const occupancy = s && s.rooms > 0 ? Math.round((s.occupied / s.rooms) * 100) : 0;
-  const maxSeries = v ? Math.max(1, ...v.series.map((p) => p.count)) : 1;
 
   return (
     <div className="space-y-6">
@@ -177,23 +177,44 @@ function Dashboard() {
           <span className="text-xs text-muted-foreground">Visitor trend — last 30 days</span>
         </div>
         {v && (
-          <div className="flex items-end gap-1 h-40">
-            {v.series.map((p) => {
-              const h = (p.count / maxSeries) * 100;
-              return (
-                <div key={p.date} className="flex-1 flex flex-col items-center gap-1 group" title={`${p.date}: ${p.count} visits`}>
-                  <div
-                    className="w-full rounded-t transition-all bg-gradient-to-t from-primary/50 to-primary group-hover:from-primary group-hover:to-primary"
-                    style={{ height: `${h}%`, minHeight: p.count > 0 ? "3px" : "1px" }}
-                  />
-                </div>
-              );
-            })}
+          <div className="h-48 -ml-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={v.series} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="visitorFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.45} />
+                    <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="currentColor" className="text-muted-foreground/15" />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={(d: string) => format(new Date(d), "MMM d")}
+                  interval={Math.max(0, Math.floor(v.series.length / 6) - 1)}
+                  tick={{ fontSize: 10, fill: "currentColor" }}
+                  className="text-muted-foreground"
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis allowDecimals={false} width={28} tick={{ fontSize: 10, fill: "currentColor" }} className="text-muted-foreground" axisLine={false} tickLine={false} />
+                <Tooltip
+                  formatter={(value: number) => [value, "Visits"]}
+                  labelFormatter={(d: string) => format(new Date(d), "MMM d, yyyy")}
+                  contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: "var(--foreground)" }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  stroke="var(--primary)"
+                  strokeWidth={2}
+                  fill="url(#visitorFill)"
+                  activeDot={{ r: 4 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         )}
-        <div className="flex justify-between text-[10px] text-muted-foreground mt-2">
-          <span>30 days ago</span><span>Today</span>
-        </div>
       </Card>
 
       <Card className="p-5">

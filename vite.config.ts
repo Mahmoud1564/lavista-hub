@@ -12,4 +12,13 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    // The container here doesn't support the dual-stack "::" host the base config
+    // defaults to (EAFNOSUPPORT), so bind IPv4 explicitly for the Replit preview proxy.
+    server: {
+      host: "0.0.0.0",
+      port: 5000,
+      allowedHosts: true,
+    },
+  },
 });

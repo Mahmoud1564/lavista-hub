@@ -9,6 +9,50 @@ import { useSignedImage } from "@/hooks/use-signed-image";
 import { uploadFile, deleteFile } from "@/lib/storage";
 
 const BUCKET = "review-images";
+const REVIEW_TEXT_MAX = 240;
+
+const AVATAR_COLORS = [
+  "#f97316", "#ef4444", "#8b5cf6", "#3b82f6", "#14b8a6",
+  "#22c55e", "#eab308", "#ec4899", "#6366f1", "#06b6d4",
+];
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (first + last).toUpperCase();
+}
+
+function colorForName(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function truncateText(text: string | null, max: number): string {
+  if (!text) return "";
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).trimEnd()}…`;
+}
+
+function GuestAvatar({ name, imgUrl, className }: { name: string; imgUrl?: string | null; className?: string }) {
+  if (imgUrl) {
+    return (
+      <div className={`rounded-full overflow-hidden flex-shrink-0 ${className ?? ""}`}>
+        <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center text-white font-semibold ${className ?? ""}`}
+      style={{ backgroundColor: colorForName(name || "?") }}
+    >
+      {getInitials(name)}
+    </div>
+  );
+}
 
 type Review = {
   id: string; guest_name: string; rating: number; review_text: string | null;
@@ -72,9 +116,7 @@ function ReviewCard({ r, onEdit, onToggle, onDelete }: { r: Review; onEdit: () =
   return (
     <Card className="p-5">
       <div className="flex items-start gap-3">
-        <div className="w-12 h-12 rounded-full bg-muted overflow-hidden flex-shrink-0">
-          {img && <img src={img} alt="" className="w-full h-full object-cover" />}
-        </div>
+        <GuestAvatar name={r.guest_name} imgUrl={img} className="w-12 h-12" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="font-semibold truncate">{r.guest_name}</div>
@@ -85,7 +127,9 @@ function ReviewCard({ r, onEdit, onToggle, onDelete }: { r: Review; onEdit: () =
               <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? "fill-primary text-primary" : "text-muted-foreground"}`} />
             ))}
           </div>
-          <p className="text-sm text-muted-foreground line-clamp-3 mb-3">{r.review_text}</p>
+          <p className="text-sm text-muted-foreground line-clamp-3 mb-3 break-words">
+            {truncateText(r.review_text, REVIEW_TEXT_MAX)}
+          </p>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={onEdit}>Edit</Button>
             <Button size="sm" variant="ghost" onClick={onToggle}>{r.is_visible ? "Hide" : "Show"}</Button>
@@ -148,7 +192,16 @@ function Form({ item, onSaved }: { item?: Review; onSaved: () => void }) {
           ))}
         </div>
       </div>
-      <div><Label>Review text</Label><Textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} /></div>
+      <div>
+        <Label>Review text</Label>
+        <Textarea
+          rows={4}
+          value={text}
+          maxLength={REVIEW_TEXT_MAX}
+          onChange={(e) => setText(e.target.value.slice(0, REVIEW_TEXT_MAX))}
+        />
+        <div className="text-xs text-muted-foreground mt-1 text-right">{text.length}/{REVIEW_TEXT_MAX}</div>
+      </div>
       <div>
         <Label>Guest photo</Label>
         <div className="flex items-center gap-3">

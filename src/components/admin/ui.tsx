@@ -5,11 +5,21 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 }
 
 export function Button({
-  children, onClick, variant = "primary", size = "md", type = "button", disabled, className = "",
+  children,
+  onClick,
+  variant = "primary",
+  size = "md",
+  type = "button",
+  disabled,
+  className = "",
 }: {
-  children: ReactNode; onClick?: () => void; type?: "button" | "submit";
+  children: ReactNode;
+  onClick?: () => void;
+  type?: "button" | "submit";
   variant?: "primary" | "secondary" | "ghost" | "danger" | "outline";
-  size?: "sm" | "md"; disabled?: boolean; className?: string;
+  size?: "sm" | "md";
+  disabled?: boolean;
+  className?: string;
 }) {
   const variants = {
     primary: "bg-primary text-primary-foreground hover:opacity-90",
@@ -20,30 +30,59 @@ export function Button({
   };
   const sizes = { sm: "px-2.5 py-1.5 text-xs", md: "px-4 py-2 text-sm" };
   return (
-    <button type={type} onClick={onClick} disabled={disabled}
-      className={`inline-flex items-center gap-2 rounded-md font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none ${variants[variant]} ${sizes[size]} ${className}`}>
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center gap-2 rounded-md font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none ${variants[variant]} ${sizes[size]} ${className}`}
+    >
       {children}
     </button>
   );
 }
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={`w-full px-3 py-2 rounded-md bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring ${props.className ?? ""}`} />;
+  return (
+    <input
+      {...props}
+      className={`w-full px-3 py-2 rounded-md bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring ${props.className ?? ""}`}
+    />
+  );
 }
 
 export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} className={`w-full px-3 py-2 rounded-md bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring ${props.className ?? ""}`} />;
+  return (
+    <textarea
+      {...props}
+      className={`w-full px-3 py-2 rounded-md bg-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring ${props.className ?? ""}`}
+    />
+  );
 }
 
 export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${props.className ?? ""}`} />;
+  return (
+    <select
+      {...props}
+      className={`w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${props.className ?? ""}`}
+    />
+  );
 }
 
 export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
-  return <label htmlFor={htmlFor} className="block text-xs font-medium text-muted-foreground mb-1">{children}</label>;
+  return (
+    <label htmlFor={htmlFor} className="block text-xs font-medium text-muted-foreground mb-1">
+      {children}
+    </label>
+  );
 }
 
-export function Badge({ children, variant = "default" }: { children: ReactNode; variant?: "default" | "success" | "warning" | "danger" | "muted" }) {
+export function Badge({
+  children,
+  variant = "default",
+}: {
+  children: ReactNode;
+  variant?: "default" | "success" | "warning" | "danger" | "muted";
+}) {
   const styles = {
     default: "bg-primary/15 text-primary",
     success: "bg-[oklch(0.68_0.16_150_/_0.15)] text-[oklch(0.78_0.16_150)]",
@@ -51,10 +90,26 @@ export function Badge({ children, variant = "default" }: { children: ReactNode; 
     danger: "bg-destructive/15 text-destructive",
     muted: "bg-muted text-muted-foreground",
   };
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${styles[variant]}`}>{children}</span>;
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${styles[variant]}`}
+    >
+      {children}
+    </span>
+  );
 }
 
-export function Drawer({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function Drawer({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+}) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -62,7 +117,9 @@ export function Drawer({ open, onClose, title, children }: { open: boolean; onCl
       <div className="w-full max-w-lg bg-card border-l border-border h-full overflow-y-auto">
         <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between z-10">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            ✕
+          </button>
         </div>
         <div className="p-6">{children}</div>
       </div>

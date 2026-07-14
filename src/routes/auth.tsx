@@ -29,7 +29,9 @@ function AuthPage() {
   }, [navigate]);
 
   useEffect(() => {
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
   function startCooldown(seconds: number) {
@@ -85,7 +87,9 @@ function AuthPage() {
         });
         if (error) throw error;
         setLastSignupEmail(email);
-        toast.success("Account created. Check your email to confirm. An admin must approve your access.");
+        toast.success(
+          "Account created. Check your email to confirm. An admin must approve your access.",
+        );
         setMode("signin");
         setConfirmPassword("");
       }
@@ -102,7 +106,10 @@ function AuthPage() {
 
   async function resendConfirmation() {
     const target = lastSignupEmail || email;
-    if (!target) { toast.error("Enter your email first"); return; }
+    if (!target) {
+      toast.error("Enter your email first");
+      return;
+    }
     if (cooldown > 0) return;
     setLoading(true);
     try {
@@ -131,66 +138,128 @@ function AuthPage() {
     <div className="min-h-screen flex items-center justify-center px-4 bg-background">
       <div className="w-full max-w-sm bg-card border border-border rounded-xl p-8 shadow-lg">
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground font-bold text-xl mb-3">L</div>
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground font-bold text-xl mb-3">
+            L
+          </div>
           <h1 className="text-2xl font-semibold">Lavista Admin — Staff Login</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {mode === "signin" ? "Sign in to continue" : mode === "signup" ? "Create staff account" : "Reset your password"}
+            {mode === "signin"
+              ? "Sign in to continue"
+              : mode === "signup"
+                ? "Create staff account"
+                : "Reset your password"}
           </p>
         </div>
         <form onSubmit={submit} className="space-y-4">
           {mode === "signup" && (
             <>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">Full name</label>
-                <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  Full name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
               </div>
-              <p className="text-[11px] text-muted-foreground -mt-1">An existing admin must approve your access after sign-up. All approved users get full administrator access.</p>
+              <p className="text-[11px] text-muted-foreground -mt-1">
+                An existing admin must approve your access after sign-up. All approved users get
+                full administrator access.
+              </p>
             </>
           )}
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Email</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
           </div>
           {mode !== "forgot" && (
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Password</label>
-              <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
             </div>
           )}
           {mode === "signup" && (
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Confirm password</label>
-              <input type="password" required minLength={6} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                Confirm password
+              </label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-md bg-input border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
             </div>
           )}
-          <button disabled={disabled} type="submit"
-            className="w-full py-2 rounded-md bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50">
+          <button
+            disabled={disabled}
+            type="submit"
+            className="w-full py-2 rounded-md bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50"
+          >
             {cooldown > 0
               ? `Retry in ${cooldown}s`
               : loading
                 ? "..."
-                : mode === "signin" ? "Sign in" : mode === "signup" ? "Sign up" : "Send reset link"}
+                : mode === "signin"
+                  ? "Sign in"
+                  : mode === "signup"
+                    ? "Sign up"
+                    : "Send reset link"}
           </button>
         </form>
         <div className="mt-4 space-y-2 text-center text-sm">
           {(mode === "signin" || mode === "signup") && (
-            <button type="button" onClick={resendConfirmation} disabled={disabled}
-              className="block w-full text-muted-foreground hover:text-foreground disabled:opacity-50">
+            <button
+              type="button"
+              onClick={resendConfirmation}
+              disabled={disabled}
+              className="block w-full text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
               {cooldown > 0 ? `Resend available in ${cooldown}s` : "Resend confirmation email"}
             </button>
           )}
           {mode === "signin" && (
-            <button type="button" onClick={() => setMode("forgot")} className="block w-full text-muted-foreground hover:text-foreground">
+            <button
+              type="button"
+              onClick={() => setMode("forgot")}
+              className="block w-full text-muted-foreground hover:text-foreground"
+            >
               Forgot password?
             </button>
           )}
-          <button type="button" onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setConfirmPassword(""); }}
-            className="block w-full text-muted-foreground hover:text-foreground">
-            {mode === "signin" ? "Need an account? Sign up" : mode === "signup" ? "Have an account? Sign in" : "Back to sign in"}
+          <button
+            type="button"
+            onClick={() => {
+              setMode(mode === "signin" ? "signup" : "signin");
+              setConfirmPassword("");
+            }}
+            className="block w-full text-muted-foreground hover:text-foreground"
+          >
+            {mode === "signin"
+              ? "Need an account? Sign up"
+              : mode === "signup"
+                ? "Have an account? Sign in"
+                : "Back to sign in"}
           </button>
         </div>
       </div>

@@ -6,7 +6,15 @@ import { Card, Stat, Button, Empty } from "@/components/admin/ui";
 import { StatusPill } from "@/lib/booking-status";
 import { format, subDays } from "date-fns";
 import { Plus, Sparkles, BedDouble, Eye, TrendingUp } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -15,9 +23,19 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 // Admin dashboard paths — excluded so "Website Visitors" reflects only the
 // public website (separate project writing into the same page_views table).
 const ADMIN_PATH_PREFIXES = [
-  "/dashboard", "/bookings", "/auth", "/calendar", "/content",
-  "/reviews", "/settings", "/guests", "/faq", "/media",
-  "/rooms/", "/experiences/", "/reset-password",
+  "/dashboard",
+  "/bookings",
+  "/auth",
+  "/calendar",
+  "/content",
+  "/reviews",
+  "/settings",
+  "/guests",
+  "/faq",
+  "/media",
+  "/rooms/",
+  "/experiences/",
+  "/reset-password",
 ];
 const ADMIN_EXACT = new Set(["/rooms", "/experiences"]);
 
@@ -32,7 +50,9 @@ function Dashboard() {
   const today = new Date().toISOString().slice(0, 10);
   const dayStart = new Date(today + "T00:00:00");
   const weekStart = subDays(new Date(), 7);
-  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
   const seriesStart = subDays(new Date(), 30);
 
   const bookingStats = useQuery({
@@ -40,10 +60,27 @@ function Dashboard() {
     queryFn: async () => {
       const [total, upcoming, checkIns, checkOuts, occupiedRooms, totalRooms] = await Promise.all([
         supabase.from("bookings").select("*", { count: "exact", head: true }),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).gt("check_in", today).neq("status", "cancelled"),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("check_in", today).neq("status", "cancelled"),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).eq("check_out", today).neq("status", "cancelled"),
-        supabase.from("bookings").select("*", { count: "exact", head: true }).lte("check_in", today).gt("check_out", today).neq("status", "cancelled"),
+        supabase
+          .from("bookings")
+          .select("*", { count: "exact", head: true })
+          .gt("check_in", today)
+          .neq("status", "cancelled"),
+        supabase
+          .from("bookings")
+          .select("*", { count: "exact", head: true })
+          .eq("check_in", today)
+          .neq("status", "cancelled"),
+        supabase
+          .from("bookings")
+          .select("*", { count: "exact", head: true })
+          .eq("check_out", today)
+          .neq("status", "cancelled"),
+        supabase
+          .from("bookings")
+          .select("*", { count: "exact", head: true })
+          .lte("check_in", today)
+          .gt("check_out", today)
+          .neq("status", "cancelled"),
         supabase.from("rooms").select("*", { count: "exact", head: true }).eq("is_active", true),
       ]);
       return {
@@ -85,7 +122,9 @@ function Dashboard() {
       const weekStartMs = weekStart.getTime();
       const monthStartMs = monthStart.getTime();
 
-      let todayCount = 0, weekCount = 0, monthCount = 0;
+      let todayCount = 0,
+        weekCount = 0,
+        monthCount = 0;
       const byDay: Record<string, number> = {};
       for (let i = 29; i >= 0; i--) {
         byDay[subDays(new Date(), i).toISOString().slice(0, 10)] = 0;
@@ -119,7 +158,9 @@ function Dashboard() {
         qc.invalidateQueries({ queryKey: ["dashboard-visitors"] });
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [qc]);
 
   const recent = useQuery({
@@ -186,7 +227,11 @@ function Dashboard() {
                     <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid vertical={false} stroke="currentColor" className="text-muted-foreground/15" />
+                <CartesianGrid
+                  vertical={false}
+                  stroke="currentColor"
+                  className="text-muted-foreground/15"
+                />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(d: string) => format(new Date(d), "MMM d")}
@@ -196,11 +241,23 @@ function Dashboard() {
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis allowDecimals={false} width={28} tick={{ fontSize: 10, fill: "currentColor" }} className="text-muted-foreground" axisLine={false} tickLine={false} />
+                <YAxis
+                  allowDecimals={false}
+                  width={28}
+                  tick={{ fontSize: 10, fill: "currentColor" }}
+                  className="text-muted-foreground"
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <Tooltip
                   formatter={(value: number) => [value, "Visits"]}
                   labelFormatter={(d: string) => format(new Date(d), "MMM d, yyyy")}
-                  contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
+                  contentStyle={{
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
                   labelStyle={{ color: "var(--foreground)" }}
                 />
                 <Area
@@ -221,7 +278,9 @@ function Dashboard() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="text-sm font-semibold">Occupancy</div>
-            <div className="text-xs text-muted-foreground">{s?.occupied ?? 0} of {s?.rooms ?? 0} rooms occupied</div>
+            <div className="text-xs text-muted-foreground">
+              {s?.occupied ?? 0} of {s?.rooms ?? 0} rooms occupied
+            </div>
           </div>
           <div className="text-2xl font-bold text-primary">{occupancy}%</div>
         </div>
@@ -234,7 +293,9 @@ function Dashboard() {
         <Card className="lg:col-span-2 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold">Recent Bookings</h2>
-            <Link to="/bookings" className="text-xs text-primary hover:underline">View all</Link>
+            <Link to="/bookings" className="text-xs text-primary hover:underline">
+              View all
+            </Link>
           </div>
           {recent.data && recent.data.length > 0 ? (
             <div className="overflow-x-auto">
@@ -252,22 +313,47 @@ function Dashboard() {
                     <tr key={b.id} className="border-b border-border/50 last:border-0">
                       <td className="py-3">{b.guest?.name ?? "—"}</td>
                       <td className="py-3 text-muted-foreground">{b.room?.name ?? "—"}</td>
-                      <td className="py-3 text-muted-foreground">{format(new Date(b.check_in), "MMM d")}</td>
-                      <td className="py-3"><StatusPill checkIn={b.check_in} checkOut={b.check_out} rawStatus={b.status} /></td>
+                      <td className="py-3 text-muted-foreground">
+                        {format(new Date(b.check_in), "MMM d")}
+                      </td>
+                      <td className="py-3">
+                        <StatusPill
+                          checkIn={b.check_in}
+                          checkOut={b.check_out}
+                          rawStatus={b.status}
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : <Empty title="No bookings yet" />}
+          ) : (
+            <Empty title="No bookings yet" />
+          )}
         </Card>
 
         <Card className="p-5">
           <h2 className="font-semibold mb-4">Quick Actions</h2>
           <div className="space-y-2">
-            <Link to="/rooms"><Button variant="outline" className="w-full justify-start"><BedDouble className="w-4 h-4" />Add a room</Button></Link>
-            <Link to="/experiences"><Button variant="outline" className="w-full justify-start"><Sparkles className="w-4 h-4" />Add an experience</Button></Link>
-            <Link to="/bookings"><Button variant="outline" className="w-full justify-start"><Plus className="w-4 h-4" />New booking</Button></Link>
+            <Link to="/rooms">
+              <Button variant="outline" className="w-full justify-start">
+                <BedDouble className="w-4 h-4" />
+                Add a room
+              </Button>
+            </Link>
+            <Link to="/experiences">
+              <Button variant="outline" className="w-full justify-start">
+                <Sparkles className="w-4 h-4" />
+                Add an experience
+              </Button>
+            </Link>
+            <Link to="/bookings">
+              <Button variant="outline" className="w-full justify-start">
+                <Plus className="w-4 h-4" />
+                New booking
+              </Button>
+            </Link>
           </div>
         </Card>
       </div>
@@ -275,9 +361,19 @@ function Dashboard() {
   );
 }
 
-function VisitorTile({ label, value, accent }: { label: string; value: number | undefined; accent?: boolean }) {
+function VisitorTile({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number | undefined;
+  accent?: boolean;
+}) {
   return (
-    <div className={`rounded-lg border border-border p-4 ${accent ? "bg-primary/5" : "bg-background/40"}`}>
+    <div
+      className={`rounded-lg border border-border p-4 ${accent ? "bg-primary/5" : "bg-background/40"}`}
+    >
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className={`text-2xl font-semibold mt-1 ${accent ? "text-primary" : "text-foreground"}`}>
         {value ?? "—"}

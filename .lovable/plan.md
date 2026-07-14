@@ -18,6 +18,7 @@ Six interconnected changes. I'll implement them in this order so database change
 ## 2. Inline image uploads on Create forms
 
 Rooms, Experiences, Reviews, About:
+
 - Refactor create dialogs to collect `File[]` in local state before insert.
 - On submit: insert the row, then upload each file to storage using the new row id, then insert image rows. Show progress.
 - Rooms create: allow marking one uploaded file as thumbnail before save.
@@ -41,6 +42,7 @@ Rooms, Experiences, Reviews, About:
 ## 6. Availability Calendar page
 
 New sidebar entry `/calendar`:
+
 - Month grid showing every room as a row (Airbnb-style timeline) OR a room filter + single-room month view (simpler, ships faster). **I'll build the room-filter + month view** since it matches the existing per-room calendar and is genuinely usable on smaller screens.
 - Each day cell shows: status (available/booked/blocked) and price (from `room_pricing` resolved by priority, falling back to `rooms.price_per_night`).
 - Click a day → popover with: Block/unblock, Set price for date, Set seasonal range.

@@ -12,13 +12,26 @@ export const Route = createFileRoute("/_authenticated/bookings")({
   component: BookingsPage,
 });
 
-type BookedRoom = { id: string; room_id: string; price_per_night: number | null; room: { id: string; name: string; price: number } | null };
+type BookedRoom = {
+  id: string;
+  room_id: string;
+  price_per_night: number | null;
+  room: { id: string; name: string; price: number } | null;
+};
 
 type BookingRow = {
-  id: string; check_in: string; check_out: string; status: string;
-  notes: string | null; admin_notes: string | null; arrival_time: string | null;
-  total_price: number | null; created_at: string;
-  guest_id: string | null; room_id: string | null; num_guests: number | null;
+  id: string;
+  check_in: string;
+  check_out: string;
+  status: string;
+  notes: string | null;
+  admin_notes: string | null;
+  arrival_time: string | null;
+  total_price: number | null;
+  created_at: string;
+  guest_id: string | null;
+  room_id: string | null;
+  num_guests: number | null;
   guest: { id: string; name: string; phone: string | null; email: string | null } | null;
   room: { id: string; name: string; price: number } | null;
   booking_rooms: BookedRoom[];
@@ -36,7 +49,9 @@ function BookingsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, check_in, check_out, status, notes, admin_notes, arrival_time, total_price, created_at, guest_id, room_id, num_guests, guest:guests(id, name, phone, email), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))")
+        .select(
+          "id, check_in, check_out, status, notes, admin_notes, arrival_time, total_price, created_at, guest_id, room_id, num_guests, guest:guests(id, name, phone, email), room:rooms(id, name, price), booking_rooms(id, room_id, price_per_night, room:rooms(id, name, price))",
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as BookingRow[];
@@ -71,41 +86,81 @@ function BookingsPage() {
   }
 
   function exportCsv() {
-    const headers = ["id", "guest", "phone", "rooms", "check_in", "check_out", "nights", "status", "total"];
+    const headers = [
+      "id",
+      "guest",
+      "phone",
+      "rooms",
+      "check_in",
+      "check_out",
+      "nights",
+      "status",
+      "total",
+    ];
     const rows = filtered.map((b) => [
-      b.id, b.guest?.name ?? "", b.guest?.phone ?? "", roomsLabel(b),
-      b.check_in, b.check_out, nightsBetween(b.check_in, b.check_out), b.status, b.total_price ?? "",
+      b.id,
+      b.guest?.name ?? "",
+      b.guest?.phone ?? "",
+      roomsLabel(b),
+      b.check_in,
+      b.check_out,
+      nightsBetween(b.check_in, b.check_out),
+      b.status,
+      b.total_price ?? "",
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = [headers, ...rows]
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `bookings-${Date.now()}.csv`; a.click();
+    a.href = url;
+    a.download = `bookings-${Date.now()}.csv`;
+    a.click();
     URL.revokeObjectURL(url);
   }
 
-  async function refresh() { await qc.invalidateQueries({ queryKey: ["bookings"] }); }
+  async function refresh() {
+    await qc.invalidateQueries({ queryKey: ["bookings"] });
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Search by guest, phone, email, id..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input
+            className="pl-9"
+            placeholder="Search by guest, phone, email, id..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="sm:w-44">
+        <Select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="sm:w-44"
+        >
           <option value="">All statuses</option>
           <option value="upcoming">Upcoming</option>
           <option value="checked_in">Checked in</option>
           <option value="checked_out">Checked out</option>
           <option value="cancelled">Cancelled</option>
         </Select>
-        <Button variant="outline" onClick={exportCsv}><Download className="w-4 h-4" />Export</Button>
-        <Button onClick={() => setCreating(true)}><Plus className="w-4 h-4" />New booking</Button>
+        <Button variant="outline" onClick={exportCsv}>
+          <Download className="w-4 h-4" />
+          Export
+        </Button>
+        <Button onClick={() => setCreating(true)}>
+          <Plus className="w-4 h-4" />
+          New booking
+        </Button>
       </div>
 
       <Card>
-        {filtered.length === 0 ? <Empty title="No bookings match your filters" /> : (
+        {filtered.length === 0 ? (
+          <Empty title="No bookings match your filters" />
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-muted-foreground border-b border-border">
@@ -122,18 +177,36 @@ function BookingsPage() {
               </thead>
               <tbody>
                 {filtered.map((b) => (
-                  <tr key={b.id} onClick={() => setSelected(b)} className="border-b border-border/50 last:border-0 hover:bg-accent/40 cursor-pointer">
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{b.id.slice(0, 8)}</td>
+                  <tr
+                    key={b.id}
+                    onClick={() => setSelected(b)}
+                    className="border-b border-border/50 last:border-0 hover:bg-accent/40 cursor-pointer"
+                  >
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      {b.id.slice(0, 8)}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="font-medium">{b.guest?.name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground">{b.guest?.phone ?? b.guest?.email ?? ""}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {b.guest?.phone ?? b.guest?.email ?? ""}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{roomsLabel(b)}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_in), "MMM d, yyyy")}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{format(new Date(b.check_out), "MMM d, yyyy")}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{nightsBetween(b.check_in, b.check_out)}</td>
-                    <td className="px-4 py-3"><StatusBadge booking={b} /></td>
-                    <td className="px-4 py-3 text-right">{b.total_price ? `$${b.total_price}` : "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {format(new Date(b.check_in), "MMM d, yyyy")}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {format(new Date(b.check_out), "MMM d, yyyy")}
+                    </td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">
+                      {nightsBetween(b.check_in, b.check_out)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge booking={b} />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {b.total_price ? `$${b.total_price}` : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -143,21 +216,50 @@ function BookingsPage() {
       </Card>
 
       <Drawer open={!!selected} onClose={() => setSelected(null)} title="Booking details">
-        {selected && <BookingForm booking={selected} onSaved={async () => { await refresh(); setSelected(null); }} onCancel={() => setSelected(null)} />}
+        {selected && (
+          <BookingForm
+            booking={selected}
+            onSaved={async () => {
+              await refresh();
+              setSelected(null);
+            }}
+            onCancel={() => setSelected(null)}
+          />
+        )}
       </Drawer>
 
       <Drawer open={creating} onClose={() => setCreating(false)} title="New booking">
-        <BookingForm onSaved={async () => { await refresh(); setCreating(false); }} onCancel={() => setCreating(false)} />
+        <BookingForm
+          onSaved={async () => {
+            await refresh();
+            setCreating(false);
+          }}
+          onCancel={() => setCreating(false)}
+        />
       </Drawer>
     </div>
   );
 }
 
 function StatusBadge({ booking }: { booking: BookingRow }) {
-  return <StatusPill checkIn={booking.check_in} checkOut={booking.check_out} rawStatus={booking.status} />;
+  return (
+    <StatusPill
+      checkIn={booking.check_in}
+      checkOut={booking.check_out}
+      rawStatus={booking.status}
+    />
+  );
 }
 
-function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onSaved: () => void; onCancel: () => void }) {
+function BookingForm({
+  booking,
+  onSaved,
+  onCancel,
+}: {
+  booking?: BookingRow;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
   const isEdit = !!booking;
   const [guestName, setGuestName] = useState(booking?.guest?.name ?? "");
   const [guestPhone, setGuestPhone] = useState(booking?.guest?.phone ?? "");
@@ -188,13 +290,16 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   // Auto-calc total when rooms/dates change and totalPrice is empty
   useEffect(() => {
     if (totalPrice || !checkIn || !checkOut || !roomIds.length) return;
-    const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
+    const nights = Math.max(
+      1,
+      Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000),
+    );
     const sum = roomIds.reduce((acc, id) => acc + (rooms.find((r) => r.id === id)?.price ?? 0), 0);
     if (sum > 0) setTotalPrice(String(sum * nights));
   }, [roomIds, checkIn, checkOut, rooms, totalPrice]);
 
   function toggleRoom(id: string) {
-    setRoomIds((prev) => prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]);
+    setRoomIds((prev) => (prev.includes(id) ? prev.filter((r) => r !== id) : [...prev, id]));
   }
 
   async function save() {
@@ -211,14 +316,17 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
       // Availability check per room
       for (const rid of roomIds) {
         const { data: avail, error: aerr } = await supabase.rpc("is_room_available", {
-          _room_id: rid, _check_in: checkIn, _check_out: checkOut,
+          _room_id: rid,
+          _check_in: checkIn,
+          _check_out: checkOut,
           _exclude_booking: booking?.id ?? undefined,
         });
         if (aerr) throw aerr;
         if (avail === false) {
           const name = rooms.find((r) => r.id === rid)?.name ?? "room";
           toast.error(`${name} is not available for those dates.`);
-          setSaving(false); return;
+          setSaving(false);
+          return;
         }
       }
 
@@ -232,14 +340,20 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         await supabase.from("guests").update(guestPayload).eq("id", booking.guest.id);
         gid = booking.guest.id;
       } else {
-        const { data, error } = await supabase.from("guests").insert(guestPayload).select("id").single();
+        const { data, error } = await supabase
+          .from("guests")
+          .insert(guestPayload)
+          .select("id")
+          .single();
         if (error) throw error;
         gid = data.id;
       }
 
       const payload = {
-        guest_id: gid!, room_id: roomIds[0],
-        check_in: checkIn, check_out: checkOut,
+        guest_id: gid!,
+        room_id: roomIds[0],
+        check_in: checkIn,
+        check_out: checkOut,
         arrival_time: arrivalTime || null,
         // Preserve cancellation, otherwise keep as "upcoming" — display status
         // is computed from dates via computeBookingStatus().
@@ -254,7 +368,11 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
         const { error } = await supabase.from("bookings").update(payload).eq("id", booking!.id);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from("bookings").insert(payload).select("id").single();
+        const { data, error } = await supabase
+          .from("bookings")
+          .insert(payload)
+          .select("id")
+          .single();
         if (error) throw error;
         bookingId = data.id;
       }
@@ -285,8 +403,14 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
   async function cancelBooking() {
     if (!booking) return;
     if (!confirm("Cancel this booking?")) return;
-    const { error } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", booking.id);
-    if (error) { toast.error(error.message); return; }
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled" })
+      .eq("id", booking.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Booking cancelled");
     onSaved();
   }
@@ -295,70 +419,166 @@ function BookingForm({ booking, onSaved, onCancel }: { booking?: BookingRow; onS
     if (!booking) return;
     if (!confirm("Permanently delete this booking?")) return;
     const { error } = await supabase.from("bookings").delete().eq("id", booking.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Booking deleted");
     onSaved();
   }
 
   return (
     <div className="space-y-4">
-      <div><Label>Guest name *</Label><Input value={guestName} onChange={(e) => setGuestName(e.target.value)} /></div>
+      <div>
+        <Label>Guest name *</Label>
+        <Input value={guestName} onChange={(e) => setGuestName(e.target.value)} />
+      </div>
       <div className="grid grid-cols-2 gap-3">
-        <div><Label>Phone</Label><Input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} /></div>
-        <div><Label>Email</Label><Input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} /></div>
+        <div>
+          <Label>Phone</Label>
+          <Input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} />
+        </div>
+        <div>
+          <Label>Email</Label>
+          <Input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} />
+        </div>
       </div>
       <div>
         <Label>Rooms * (select one or more)</Label>
         <div className="border border-border rounded-md max-h-48 overflow-y-auto divide-y divide-border">
-          {rooms.length === 0 && <div className="p-3 text-xs text-muted-foreground">No rooms yet.</div>}
+          {rooms.length === 0 && (
+            <div className="p-3 text-xs text-muted-foreground">No rooms yet.</div>
+          )}
           {rooms.map((r) => (
-            <label key={r.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-accent cursor-pointer">
+            <label
+              key={r.id}
+              className="flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-accent cursor-pointer"
+            >
               <span className="flex items-center gap-2">
-                <input type="checkbox" checked={roomIds.includes(r.id)} onChange={() => toggleRoom(r.id)} className="accent-[color:var(--primary)]" />
+                <input
+                  type="checkbox"
+                  checked={roomIds.includes(r.id)}
+                  onChange={() => toggleRoom(r.id)}
+                  className="accent-[color:var(--primary)]"
+                />
                 {r.name}
               </span>
               <span className="text-xs text-muted-foreground">${r.price}/night</span>
             </label>
           ))}
         </div>
-        {roomIds.length > 1 && <div className="text-[10px] text-muted-foreground mt-1">{roomIds.length} rooms selected</div>}
+        {roomIds.length > 1 && (
+          <div className="text-[10px] text-muted-foreground mt-1">
+            {roomIds.length} rooms selected
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div><Label>Check-in *</Label><Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} /></div>
-        <div><Label>Check-out *</Label><Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} /></div>
-        <div><Label>Arrival time</Label><Input type="time" value={arrivalTime} onChange={(e) => setArrivalTime(e.target.value)} placeholder="—" /></div>
+        <div>
+          <Label>Check-in *</Label>
+          <Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
+        </div>
+        <div>
+          <Label>Check-out *</Label>
+          <Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
+        </div>
+        <div>
+          <Label>Arrival time</Label>
+          <Input
+            type="time"
+            value={arrivalTime}
+            onChange={(e) => setArrivalTime(e.target.value)}
+            placeholder="—"
+          />
+        </div>
       </div>
       {checkIn && checkOut && new Date(checkOut) > new Date(checkIn) && (
         <div className="text-xs text-muted-foreground">
-          Duration: <span className="text-foreground font-medium">{Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)} night(s)</span>
+          Duration:{" "}
+          <span className="text-foreground font-medium">
+            {Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000)}{" "}
+            night(s)
+          </span>
         </div>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <div><Label>Guests</Label><Input type="number" min="1" value={numGuests} onChange={(e) => setNumGuests(e.target.value)} /></div>
-        <div><Label>Total price</Label><Input type="number" step="0.01" value={totalPrice} onChange={(e) => setTotalPrice(e.target.value)} /></div>
+        <div>
+          <Label>Guests</Label>
+          <Input
+            type="number"
+            min="1"
+            value={numGuests}
+            onChange={(e) => setNumGuests(e.target.value)}
+          />
+        </div>
+        <div>
+          <Label>Total price</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={totalPrice}
+            onChange={(e) => setTotalPrice(e.target.value)}
+          />
+        </div>
       </div>
       {booking && (
         <div>
           <Label>Status (auto-calculated)</Label>
-          <div className="pt-1"><StatusPill checkIn={checkIn || booking.check_in} checkOut={checkOut || booking.check_out} rawStatus={booking.status} /></div>
-          <div className="text-[10px] text-muted-foreground mt-1">Status updates automatically based on the booking dates. Use "Cancel booking" below to mark as cancelled.</div>
+          <div className="pt-1">
+            <StatusPill
+              checkIn={checkIn || booking.check_in}
+              checkOut={checkOut || booking.check_out}
+              rawStatus={booking.status}
+            />
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-1">
+            Status updates automatically based on the booking dates. Use "Cancel booking" below to
+            mark as cancelled.
+          </div>
         </div>
       )}
       <div>
         <Label>Guest special request (read-only)</Label>
-        <Textarea rows={2} value={guestRequest} readOnly disabled placeholder="No special request from guest" className="opacity-80" />
-        <div className="text-[10px] text-muted-foreground mt-1">Submitted by the guest during booking. Not editable.</div>
+        <Textarea
+          rows={2}
+          value={guestRequest}
+          readOnly
+          disabled
+          placeholder="No special request from guest"
+          className="opacity-80"
+        />
+        <div className="text-[10px] text-muted-foreground mt-1">
+          Submitted by the guest during booking. Not editable.
+        </div>
       </div>
       <div>
         <Label>Admin notes (internal)</Label>
-        <Textarea rows={3} value={adminNotes} onChange={(e) => setAdminNotes(e.target.value)} placeholder="Internal notes — never shown to the guest" />
+        <Textarea
+          rows={3}
+          value={adminNotes}
+          onChange={(e) => setAdminNotes(e.target.value)}
+          placeholder="Internal notes — never shown to the guest"
+        />
       </div>
 
       <div className="flex flex-wrap gap-2 pt-4 border-t border-border">
-        <Button onClick={save} disabled={saving}>{saving ? "Saving..." : isEdit ? "Save changes" : "Create booking"}</Button>
-        <Button variant="ghost" onClick={onCancel}>Close</Button>
-        {isEdit && booking?.status !== "cancelled" && <Button variant="outline" onClick={cancelBooking}><X className="w-4 h-4" />Cancel booking</Button>}
-        {isEdit && <Button variant="danger" onClick={deleteBooking}>Delete</Button>}
+        <Button onClick={save} disabled={saving}>
+          {saving ? "Saving..." : isEdit ? "Save changes" : "Create booking"}
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>
+          Close
+        </Button>
+        {isEdit && booking?.status !== "cancelled" && (
+          <Button variant="outline" onClick={cancelBooking}>
+            <X className="w-4 h-4" />
+            Cancel booking
+          </Button>
+        )}
+        {isEdit && (
+          <Button variant="danger" onClick={deleteBooking}>
+            Delete
+          </Button>
+        )}
       </div>
     </div>
   );

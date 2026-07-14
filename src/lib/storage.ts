@@ -5,14 +5,22 @@ import { supabase } from "@/integrations/supabase/client";
  * (e.g. "abcd1234.jpg") and resolve a signed URL on demand. If image_url is
  * already an absolute URL we return it as-is.
  */
-export async function getSignedUrl(bucket: string, path: string | null | undefined, expiresIn = 60 * 60 * 24 * 7): Promise<string | null> {
+export async function getSignedUrl(
+  bucket: string,
+  path: string | null | undefined,
+  expiresIn = 60 * 60 * 24 * 7,
+): Promise<string | null> {
   if (!path) return null;
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   const { data } = await supabase.storage.from(bucket).createSignedUrl(path, expiresIn);
   return data?.signedUrl ?? null;
 }
 
-export async function getSignedUrls(bucket: string, paths: string[], expiresIn = 60 * 60 * 24 * 7): Promise<Record<string, string>> {
+export async function getSignedUrls(
+  bucket: string,
+  paths: string[],
+  expiresIn = 60 * 60 * 24 * 7,
+): Promise<Record<string, string>> {
   const map: Record<string, string> = {};
   const remote = paths.filter((p) => p && !p.startsWith("http"));
   paths.forEach((p) => {

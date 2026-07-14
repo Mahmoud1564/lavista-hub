@@ -12,8 +12,10 @@ export function computeBookingStatus(
   if (rawStatus === "cancelled") return "cancelled";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const ci = new Date(checkIn); ci.setHours(0, 0, 0, 0);
-  const co = new Date(checkOut); co.setHours(0, 0, 0, 0);
+  const ci = new Date(checkIn);
+  ci.setHours(0, 0, 0, 0);
+  const co = new Date(checkOut);
+  co.setHours(0, 0, 0, 0);
   if (today < ci) return "upcoming";
   if (today >= co) return "checked_out";
   return "checked_in";
@@ -35,10 +37,20 @@ export const STATUS_CLASSES: Record<DisplayStatus, string> = {
   cancelled: "bg-red-500/15 text-red-400 border border-red-500/30",
 };
 
-export function StatusPill({ checkIn, checkOut, rawStatus }: { checkIn: string; checkOut: string; rawStatus?: string | null }) {
+export function StatusPill({
+  checkIn,
+  checkOut,
+  rawStatus,
+}: {
+  checkIn: string;
+  checkOut: string;
+  rawStatus?: string | null;
+}) {
   const s = computeBookingStatus(checkIn, checkOut, rawStatus);
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CLASSES[s]}`}>
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CLASSES[s]}`}
+    >
       {STATUS_LABEL[s]}
     </span>
   );

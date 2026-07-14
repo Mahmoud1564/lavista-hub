@@ -20,14 +20,23 @@ export function useAuth() {
       setUser(data.session?.user ?? null);
       setLoading(false);
     });
-    return () => { sub.subscription.unsubscribe(); };
+    return () => {
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
-    if (!user) { setRoles([]); return; }
-    supabase.from("user_roles").select("role").eq("user_id", user.id).then(({ data }) => {
-      setRoles(((data ?? []) as { role: AppRole }[]).map((r) => r.role));
-    });
+    if (!user) {
+      setRoles([]);
+      return;
+    }
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        setRoles(((data ?? []) as { role: AppRole }[]).map((r) => r.role));
+      });
   }, [user]);
 
   // All approved users are admins now (staff role removed).

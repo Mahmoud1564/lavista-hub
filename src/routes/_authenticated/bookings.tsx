@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { format, isToday, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -399,6 +399,8 @@ function BookingsPage() {
 }
 
 // ─── Inline status selector in the table row ─────────────────────────────────
+// Custom dropdown so the option list respects the dark theme — native <select>
+// <option> elements cannot be styled cross-browser in dark mode.
 
 function InlineStatusSelect({
   bookingId,
@@ -409,25 +411,59 @@ function InlineStatusSelect({
   current: BookingStatus;
   onChange: (id: string, s: BookingStatus) => Promise<void>;
 }) {
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const cls = STATUS_CLASSES[current];
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [open]);
+
+  async function pick(s: BookingStatus) {
+    setOpen(false);
+    if (s === current) return;
+    setBusy(true);
+    await onChange(bookingId, s);
+    setBusy(false);
+  }
+
   return (
-    <select
-      value={current}
-      disabled={busy}
-      onChange={async (e) => {
-        setBusy(true);
-        await onChange(bookingId, e.target.value as BookingStatus);
-        setBusy(false);
-      }}
-      className={`text-xs font-medium px-2 py-0.5 rounded-full border cursor-pointer appearance-none pr-5 ${cls} ${busy ? "opacity-60" : ""}`}
-      style={{ backgroundImage: "none" }}
-      title="Change status"
-    >
-      {ALL_STATUSES.map((s) => (
-        <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-      ))}
-    </select>
+    <div ref={ref} className="relative inline-block">
+      {/* Colored badge trigger */}
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex w-fit items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap border cursor-pointer transition-opacity ${STATUS_CLASSES[current]} ${busy ? "opacity-50 pointer-events-none" : ""}`}
+      >
+        {STATUS_LABEL[current]}
+        <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {/* Dropdown option list — neutral style, dark theme */}
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 min-w-[140px] rounded-lg border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden py-1">
+          {ALL_STATUSES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => pick(s)}
+              className={`w-full text-left px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
+                s === current ? "bg-accent/60 text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              {STATUS_LABEL[s]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

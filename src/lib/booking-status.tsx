@@ -17,22 +17,18 @@ export const STATUS_LABEL: Record<BookingStatus, string> = {
   cancelled:   "Cancelled",
 };
 
-// Single unified badge style — same background and text color for every status.
-// High-contrast foreground on a subtle neutral fill ensures WCAG AA readability
-// in dark mode without relying on low-opacity accent colors.
-const BADGE_CLASS = "bg-foreground/10 text-foreground border border-foreground/20";
-
+// Per-status colored badge classes (used on the badge/pill only — NOT inside
+// the dropdown option list, which always uses a neutral style).
 export const STATUS_CLASSES: Record<BookingStatus, string> = {
-  upcoming:    BADGE_CLASS,
-  checked_in:  BADGE_CLASS,
-  checked_out: BADGE_CLASS,
-  cancelled:   BADGE_CLASS,
+  upcoming:    "bg-blue-500/20 text-blue-300 border border-blue-500/40",
+  checked_in:  "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40",
+  checked_out: "bg-zinc-500/15 text-zinc-300 border border-zinc-500/30",
+  cancelled:   "bg-red-500/20 text-red-300 border border-red-500/40",
 };
 
 /**
  * Normalise a raw DB string to a known BookingStatus.
- * Any unknown value (including old "pending", "confirmed", "no_show") falls
- * back to "upcoming" so existing rows degrade gracefully.
+ * Any unknown value falls back to "upcoming" so existing rows degrade gracefully.
  */
 export function normalizeStatus(raw: string | null | undefined): BookingStatus {
   if (raw && (ALL_STATUSES as string[]).includes(raw)) return raw as BookingStatus;
@@ -40,9 +36,8 @@ export function normalizeStatus(raw: string | null | undefined): BookingStatus {
 }
 
 /**
- * StatusPill — uniform badge showing the booking status label.
- * `checkIn` / `checkOut` are accepted for backwards-compat but ignored;
- * status is purely the stored `rawStatus` value.
+ * StatusPill — colored fit-content badge for the booking status.
+ * `checkIn` / `checkOut` accepted for backwards-compat but ignored.
  */
 export function StatusPill({
   rawStatus,
@@ -55,7 +50,9 @@ export function StatusPill({
 }) {
   const s = normalizeStatus(rawStatus);
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide ${BADGE_CLASS}`}>
+    <span
+      className={`inline-flex w-fit items-center px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${STATUS_CLASSES[s]}`}
+    >
       {STATUS_LABEL[s]}
     </span>
   );

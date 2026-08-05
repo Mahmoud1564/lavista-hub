@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { format, isToday, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -399,8 +400,8 @@ function BookingsPage() {
 }
 
 // ─── Inline status selector in the table row ─────────────────────────────────
-// Custom dropdown so the option list respects the dark theme — native <select>
-// <option> elements cannot be styled cross-browser in dark mode.
+// The dropdown is portalled to <body> so it is never clipped by the table's
+// overflow container. Position is calculated from the trigger's bounding rect.
 
 function InlineStatusSelect({
   bookingId,
@@ -413,16 +414,33 @@ function InlineStatusSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
+  function openMenu() {
+    if (!btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    setCoords({ top: r.bottom + window.scrollY + 4, left: r.left + window.scrollX });
+    setOpen(true);
+  }
+
+  // Close on outside click or scroll
   useEffect(() => {
     if (!open) return;
     function onOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current  && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false);
     }
+    function onScroll() { setOpen(false); }
     document.addEventListener("mousedown", onOutside);
-    return () => document.removeEventListener("mousedown", onOutside);
+    document.addEventListener("scroll", onScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onOutside);
+      document.removeEventListener("scroll", onScroll, true);
+    };
   }, [open]);
 
   async function pick(s: BookingStatus) {
@@ -433,37 +451,45 @@ function InlineStatusSelect({
     setBusy(false);
   }
 
-  return (
-    <div ref={ref} className="relative inline-block">
-      {/* Colored badge trigger */}
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => setOpen((v) => !v)}
-        className={`inline-flex w-fit items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap border cursor-pointer transition-opacity ${STATUS_CLASSES[current]} ${busy ? "opacity-50 pointer-events-none" : ""}`}
-      >
-        {STATUS_LABEL[current]}
-        <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {/* Dropdown option list — neutral style, dark theme */}
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 min-w-[140px] rounded-lg border border-border bg-popover text-popover-foreground shadow-lg overflow-hidden py-1">
+  const menu = open && coords
+    ? createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: "absolute", top: coords.top, left: coords.left, zIndex: 9999 }}
+          className="min-w-[140px] rounded-lg border border-border bg-popover text-popover-foreground shadow-xl overflow-hidden py-1"
+        >
           {ALL_STATUSES.map((s) => (
             <button
               key={s}
               type="button"
+              onMouseDown={(e) => e.preventDefault()} // prevent blur before click
               onClick={() => pick(s)}
-              className={`w-full text-left px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
+              className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
                 s === current ? "bg-accent/60 text-foreground" : "text-muted-foreground"
               }`}
             >
               {STATUS_LABEL[s]}
             </button>
           ))}
-        </div>
-      )}
-    </div>
+        </div>,
+        document.body,
+      )
+    : null;
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        disabled={busy}
+        onClick={open ? () => setOpen(false) : openMenu}
+        className={`inline-flex w-fit items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap border cursor-pointer transition-opacity ${STATUS_CLASSES[current]} ${busy ? "opacity-50 pointer-events-none" : ""}`}
+      >
+        {STATUS_LABEL[current]}
+        <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {menu}
+    </>
   );
 }
 

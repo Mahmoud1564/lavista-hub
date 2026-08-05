@@ -621,21 +621,12 @@ function BookingForm({
               key={s}
               type="button"
               onClick={() => setStatus(s)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
+              className={`px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${
                 status === s
-                  ? `${STATUS_CLASSES[s]} ring-1 ring-offset-1 ring-primary/40`
-                  : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+                  ? "bg-foreground/10 text-foreground border-foreground/30 ring-1 ring-offset-1 ring-foreground/20"
+                  : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
               }`}
             >
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                s === "pending"     ? "bg-yellow-500" :
-                s === "confirmed"   ? "bg-sky-400"    :
-                s === "upcoming"    ? "bg-blue-400"   :
-                s === "checked_in"  ? "bg-emerald-400":
-                s === "checked_out" ? "bg-muted-foreground" :
-                s === "cancelled"   ? "bg-red-400"    :
-                                      "bg-orange-400"
-              }`} />
               {STATUS_LABEL[s]}
             </button>
           ))}

@@ -1,53 +1,46 @@
-// Booking statuses are now manually managed by administrators.
+// Booking statuses — manually managed by administrators.
 // The status stored in the DB is always the source of truth.
 
-export type BookingStatus =
-  | "pending"
-  | "confirmed"
-  | "upcoming"
-  | "checked_in"
-  | "checked_out"
-  | "cancelled"
-  | "no_show";
+export type BookingStatus = "upcoming" | "checked_in" | "checked_out" | "cancelled";
 
 export const ALL_STATUSES: BookingStatus[] = [
-  "pending",
-  "confirmed",
   "upcoming",
   "checked_in",
   "checked_out",
   "cancelled",
-  "no_show",
 ];
 
 export const STATUS_LABEL: Record<BookingStatus, string> = {
-  pending:     "Pending",
-  confirmed:   "Confirmed",
   upcoming:    "Upcoming",
   checked_in:  "Checked In",
   checked_out: "Checked Out",
   cancelled:   "Cancelled",
-  no_show:     "No Show",
 };
+
+// Single unified badge style — same background and text color for every status.
+// High-contrast foreground on a subtle neutral fill ensures WCAG AA readability
+// in dark mode without relying on low-opacity accent colors.
+const BADGE_CLASS = "bg-foreground/10 text-foreground border border-foreground/20";
 
 export const STATUS_CLASSES: Record<BookingStatus, string> = {
-  pending:     "bg-yellow-500/15 text-yellow-500 border border-yellow-500/30",
-  confirmed:   "bg-sky-500/15 text-sky-400 border border-sky-500/30",
-  upcoming:    "bg-blue-500/15 text-blue-400 border border-blue-500/30",
-  checked_in:  "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30",
-  checked_out: "bg-muted text-muted-foreground border border-border",
-  cancelled:   "bg-red-500/15 text-red-400 border border-red-500/30",
-  no_show:     "bg-orange-500/15 text-orange-400 border border-orange-500/30",
+  upcoming:    BADGE_CLASS,
+  checked_in:  BADGE_CLASS,
+  checked_out: BADGE_CLASS,
+  cancelled:   BADGE_CLASS,
 };
 
-/** Normalise a raw DB string to a known BookingStatus (fallback: "pending"). */
+/**
+ * Normalise a raw DB string to a known BookingStatus.
+ * Any unknown value (including old "pending", "confirmed", "no_show") falls
+ * back to "upcoming" so existing rows degrade gracefully.
+ */
 export function normalizeStatus(raw: string | null | undefined): BookingStatus {
   if (raw && (ALL_STATUSES as string[]).includes(raw)) return raw as BookingStatus;
-  return "pending";
+  return "upcoming";
 }
 
 /**
- * StatusPill — renders a coloured badge for the booking status.
+ * StatusPill — uniform badge showing the booking status label.
  * `checkIn` / `checkOut` are accepted for backwards-compat but ignored;
  * status is purely the stored `rawStatus` value.
  */
@@ -62,13 +55,13 @@ export function StatusPill({
 }) {
   const s = normalizeStatus(rawStatus);
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CLASSES[s]}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide ${BADGE_CLASS}`}>
       {STATUS_LABEL[s]}
     </span>
   );
 }
 
-/** @deprecated Use rawStatus directly — status is no longer auto-computed from dates. */
+/** @deprecated Status is no longer auto-computed from dates. */
 export function computeBookingStatus(
   _checkIn: string,
   _checkOut: string,

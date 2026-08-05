@@ -1,0 +1,146 @@
+# Booking Filters & Manual Status Management
+
+Please improve the Bookings page by adding advanced filtering options and changing the booking status behavior.
+
+---
+
+## 1. Advanced Booking Filters
+
+Add a comprehensive filter system to the Bookings page so administrators can quickly find specific bookings.
+
+Include filters for:
+
+### Booking Status
+
+* Upcoming
+* Checked In
+* Checked Out
+* Cancelled
+* No Show
+* Pending
+
+---
+
+### Payment Status
+
+* Paid
+* Unpaid
+* Partially Paid
+* Refunded
+
+---
+
+### Payment Method
+
+* Online Payment
+* Cash
+* Bank Transfer
+* Pay at Hotel
+
+---
+
+### Date Filters
+
+Allow filtering by:
+
+* Check-in Date
+* Check-out Date
+* Booking Date
+* Arrival Date
+
+Support:
+
+* Specific date
+* Date range
+
+---
+
+### Stay Details
+
+Filter by:
+
+* Number of Nights
+* Number of Guests
+* Number of Rooms
+
+---
+
+### Room Filters
+
+Filter by:
+
+* Room
+* Room Type
+
+---
+
+### Guest Filters
+
+Filter by:
+
+* Guest Name
+* Phone Number
+* Email Address
+
+---
+
+### Booking ID
+
+Allow searching directly by Booking ID.
+
+---
+
+### Quick Filters
+
+Add quick filters such as:
+
+* Today's Check-ins
+* Today's Check-outs
+* Current Guests
+* Future Bookings
+* Cancelled Bookings
+* Unpaid Bookings
+
+---
+
+Allow multiple filters to be combined together.
+
+Example:
+
+* Room 203
+* Checked In
+* Paid Online
+* Stay longer than 3 nights
+
+---
+
+## 2. Manual Booking Status
+
+Remove the automatic booking status logic.
+
+Booking status should **not** change automatically based on dates.
+
+Instead, administrators should manually control the booking status.
+
+Available statuses:
+
+* Pending
+* Confirmed
+* Upcoming
+* Checked In
+* Checked Out
+* Cancelled
+* No Show
+
+Administrators must be able to change the status at any time from the booking details or directly from the bookings table.
+
+Each status should have its own color badge for quick visual identification.
+
+---
+
+## IMPORTANT
+
+* Keep all filters synchronized with Supabase.
+* Filtering should happen efficiently without unnecessary page reloads.
+* Support combining multiple filters at the same time.
+* Manual status changes must be saved immediately to Supabase and reflected throughout the dashboard.

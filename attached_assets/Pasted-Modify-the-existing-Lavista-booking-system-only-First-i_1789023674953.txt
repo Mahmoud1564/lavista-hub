@@ -1,0 +1,51 @@
+Modify the existing Lavista booking system only.
+
+First inspect the existing booking implementation, Supabase booking structure, and current Bookings table. Integrate with the existing system instead of creating a new booking system.
+
+### New Booking Badge
+
+When a new booking is successfully created:
+
+1. Show a small "New" badge on that booking in the existing Bookings table.
+2. Keep the badge until the admin opens/views that booking.
+3. When the admin opens the booking details, mark it as seen and remove the "New" badge.
+4. Keep the UI simple and consistent with the existing dashboard.
+
+### Email Notification
+
+When a new booking is successfully saved:
+
+1. Send an email notification to the admin email address I specify.
+2. Use Resend.
+3. The Resend API key is already stored securely in Replit Secrets as `RESEND_API_KEY`.
+4. Never expose the API key in frontend code or source code.
+5. Send the email only after the booking has been successfully saved.
+6. The email must contain the COMPLETE booking details available in the existing booking system, including, but not limited to:
+
+   * Booking ID
+   * Guest full name
+   * Guest email
+   * Guest phone
+   * Room(s) / room type
+   * Number of rooms
+   * Check-in date
+   * Check-out date
+   * Number of nights
+   * Number of guests
+   * Arrival time, if provided
+   * Guest special request / notes, if provided
+   * Booking status
+   * Payment status
+   * Payment method
+   * Booking total
+   * Any other relevant booking information already stored for that booking
+7. Do not invent or duplicate data. Read the actual saved booking data from the existing Supabase structure.
+8. Format the email clearly and professionally so the admin can understand the complete booking at a glance.
+
+### Important Constraints
+
+* Do not create a separate notification system.
+* Do not change the existing booking flow, payment logic, authentication, or business logic.
+* Do not modify the database structure unless it is strictly necessary for the "New" state.
+* Reuse the existing Supabase setup and booking data.
+* Keep the implementation simple and consistent with the existing Lavista dashboard.

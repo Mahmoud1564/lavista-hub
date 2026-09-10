@@ -14,3 +14,9 @@ The server-side notification requires `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`
 **Why:** The first notification attempt failed while initializing the Supabase admin client, before the Resend request was made.
 
 **How to apply:** When debugging server functions, verify Replit environment availability for all server-only Supabase variables separately from browser `VITE_*` variables.
+
+For Node 20 Supabase Realtime, use the `ws` runtime package as the server transport; avoid adding `@types/ws`, which introduces global WebSocket type conflicts in this project.
+
+**Why:** The supported transport removes the Supabase runtime warning, while the DefinitelyTyped package caused broad unrelated Supabase query type errors.
+
+**How to apply:** Keep the narrow local `ws` module declaration and pass `ws` only when constructing Supabase clients on the server/SSR path.

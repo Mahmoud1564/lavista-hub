@@ -15,7 +15,7 @@ import {
   normalizeStatus,
   type BookingStatus,
 } from "@/lib/booking-status";
-import { sendNewBookingEmail } from "@/lib/booking-notification";
+import { sendNewBookingEmail, sendResendTestEmail } from "@/lib/booking-notification";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
   component: BookingsPage,
@@ -100,6 +100,7 @@ function BookingsPage() {
   // ── drawer state ──
   const [selected, setSelected] = useState<BookingRow | null>(null);
   const [creating, setCreating] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
   const [unseenBookingIds, setUnseenBookingIds] = useState<string[]>(readUnseenBookingIds);
 
   const { data: bookings = [] } = useQuery({
@@ -255,6 +256,24 @@ function BookingsPage() {
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
         </Button>
         <Button variant="outline" onClick={exportCsv}><Download className="w-4 h-4" />Export</Button>
+        <Button
+          variant="outline"
+          disabled={testingEmail}
+          onClick={async () => {
+            setTestingEmail(true);
+            try {
+              const result = await sendResendTestEmail();
+              toast.success(result.id ? `Test email accepted by Resend (${result.id})` : "Test email accepted by Resend");
+            } catch (error: unknown) {
+              console.error("Resend test email failed:", error);
+              toast.error(error instanceof Error ? error.message : "Test email failed");
+            } finally {
+              setTestingEmail(false);
+            }
+          }}
+        >
+          {testingEmail ? "Testing email…" : "Test email"}
+        </Button>
         <Button onClick={() => setCreating(true)}><Plus className="w-4 h-4" />New booking</Button>
       </div>
 

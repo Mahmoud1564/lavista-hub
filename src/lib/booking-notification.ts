@@ -58,23 +58,98 @@ function row(label: string, value: string | number): string {
     </tr>`;
 }
 
+const RESEND_FROM = "Lavista Bookings <onboarding@resend.dev>";
+
+async function requireStaffUser() {
+  const authorization = getRequestHeader("authorization");
+  const token = authorization?.replace(/^Bearer\s+/i, "");
+  if (!token) throw new Error("Unauthorized notification request");
+
+  const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
+  if (authError || !authData.user) throw new Error("Unauthorized notification request");
+
+  const { data: role, error: roleError } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", authData.user.id)
+    .in("role", ["admin", "staff"])
+    .maybeSingle();
+  if (roleError || !role) throw new Error("Only staff can send booking notifications");
+
+  return authData.user;
+}
+
+function getResendConfig() {
+  const recipient = process.env.RESEND_ADMIN_EMAIL;
+  const apiKey = process.env.RESEND_API_KEY;
+  console.info("[Resend] server configuration", {
+    apiKeyConfigured: Boolean(apiKey),
+    recipient: recipient ?? null,
+    from: RESEND_FROM,
+  });
+  if (!recipient) throw new Error("RESEND_ADMIN_EMAIL is not configured");
+  if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
+  return { recipient, apiKey };
+}
+
+async function sendResendEmail({
+  subject,
+  text,
+  html,
+}: {
+  subject: string;
+  text: string;
+  html: string;
+}) {
+  const { recipient, apiKey } = getResendConfig();
+  console.info("[Resend] sending email", { recipient, from: RESEND_FROM, subject });
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM,
+      to: [recipient],
+      subject,
+      text,
+      html,
+    }),
+  });
+
+  const responseBody = await response.text();
+  let parsedBody: { id?: string; message?: string; name?: string } = {};
+  try {
+    parsedBody = JSON.parse(responseBody) as typeof parsedBody;
+  } catch {
+    // Preserve the raw provider response below when it is not JSON.
+  }
+
+  console.info("[Resend] response", {
+    status: response.status,
+    ok: response.ok,
+    id: parsedBody.id ?? null,
+    message: parsedBody.message ?? null,
+    name: parsedBody.name ?? null,
+  });
+
+  if (!response.ok) {
+    console.error("[Resend] rejected email", {
+      status: response.status,
+      responseBody: responseBody.slice(0, 500),
+    });
+    throw new Error(`Resend rejected the notification (${response.status}): ${responseBody.slice(0, 240)}`);
+  }
+
+  return { sent: true, id: parsedBody.id ?? null };
+}
+
 export const sendNewBookingEmail = createServerFn({ method: "POST" })
   .inputValidator((data: { bookingId: string }) => data)
   .handler(async ({ data }) => {
-    const authorization = getRequestHeader("authorization");
-    const token = authorization?.replace(/^Bearer\s+/i, "");
-    if (!token) throw new Error("Unauthorized notification request");
-
-    const { data: authData, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !authData.user) throw new Error("Unauthorized notification request");
-
-    const { data: role, error: roleError } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", authData.user.id)
-      .in("role", ["admin", "staff"])
-      .maybeSingle();
-    if (roleError || !role) throw new Error("Only staff can send booking notifications");
+    await requireStaffUser();
 
     const { data: bookingData, error: bookingError } = await supabaseAdmin
       .from("bookings")
@@ -96,11 +171,6 @@ export const sendNewBookingEmail = createServerFn({ method: "POST" })
       ?.map((item) => item.price_per_night === null ? null : `${item.room?.name ?? "Room"}: ${item.price_per_night}/night`)
       .filter(Boolean)
       .join(", ") || "—";
-    const recipient = process.env.RESEND_ADMIN_EMAIL;
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!recipient) throw new Error("RESEND_ADMIN_EMAIL is not configured");
-    if (!apiKey) throw new Error("RESEND_API_KEY is not configured");
-
     // Payment fields are not present in the current Supabase bookings schema.
     // State that fact rather than inventing values.
     const paymentStatus = "Not stored in current booking data";
@@ -154,25 +224,23 @@ export const sendNewBookingEmail = createServerFn({ method: "POST" })
         </div>
       </div>`;
 
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "Lavista Bookings <onboarding@resend.dev>",
-        to: [recipient],
-        subject,
-        text,
-        html,
-      }),
-    });
+    return sendResendEmail({ subject, text, html });
+  });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Resend rejected the notification (${response.status}): ${errorBody.slice(0, 240)}`);
-    }
-
-    return { sent: true };
+export const sendResendTestEmail = createServerFn({ method: "POST" })
+  .handler(async () => {
+    await requireStaffUser();
+    const subject = "Lavista Resend delivery test";
+    const text = [
+      "This is a server-side delivery test for Lavista booking notifications.",
+      "",
+      "The Resend API key was kept on the server and this message was sent to RESEND_ADMIN_EMAIL.",
+    ].join("\n");
+    const html = `
+      <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#0f172a">
+        <h2>Lavista Resend delivery test</h2>
+        <p>This message was sent by the server-side booking notification integration.</p>
+        <p>The Resend API key was not exposed to the browser.</p>
+      </div>`;
+    return sendResendEmail({ subject, text, html });
   });

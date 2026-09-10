@@ -15,6 +15,7 @@ import {
   normalizeStatus,
   type BookingStatus,
 } from "@/lib/booking-status";
+import { sendNewBookingEmail } from "@/lib/booking-notification";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
   component: BookingsPage,
@@ -31,6 +32,22 @@ type BookingRow = {
   room: { id: string; name: string; price: number } | null;
   booking_rooms: BookedRoom[];
 };
+
+const NEW_BOOKINGS_STORAGE_KEY = "lavista-new-booking-ids";
+
+function readUnseenBookingIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(NEW_BOOKINGS_STORAGE_KEY) ?? "[]");
+    return Array.isArray(parsed) && parsed.every((id) => typeof id === "string") ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeUnseenBookingIds(ids: string[]) {
+  localStorage.setItem(NEW_BOOKINGS_STORAGE_KEY, JSON.stringify(ids));
+}
 
 const QUICK_FILTERS = [
   { id: "today_checkin",  label: "Today's Check-ins"  },
@@ -83,6 +100,7 @@ function BookingsPage() {
   // ── drawer state ──
   const [selected, setSelected] = useState<BookingRow | null>(null);
   const [creating, setCreating] = useState(false);
+  const [unseenBookingIds, setUnseenBookingIds] = useState<string[]>(readUnseenBookingIds);
 
   const { data: bookings = [] } = useQuery({
     queryKey: ["bookings"],
@@ -197,6 +215,22 @@ function BookingsPage() {
     await qc.invalidateQueries({ queryKey: ["bookings"] });
     await qc.invalidateQueries({ queryKey: ["dashboard-booking-stats"] });
     await qc.invalidateQueries({ queryKey: ["recent-bookings"] });
+  }
+
+  function markBookingSeen(bookingId: string) {
+    setUnseenBookingIds((current) => {
+      const next = current.filter((id) => id !== bookingId);
+      writeUnseenBookingIds(next);
+      return next;
+    });
+  }
+
+  function markBookingNew(bookingId: string) {
+    setUnseenBookingIds((current) => {
+      const next = current.includes(bookingId) ? current : [...current, bookingId];
+      writeUnseenBookingIds(next);
+      return next;
+    });
   }
 
   return (
@@ -343,10 +377,19 @@ function BookingsPage() {
                 {filtered.map((b) => (
                   <tr
                     key={b.id}
-                    onClick={() => setSelected(b)}
+                    onClick={() => { markBookingSeen(b.id); setSelected(b); }}
                     className="border-b border-border/50 last:border-0 hover:bg-accent/40 cursor-pointer"
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{b.id.slice(0, 8)}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span>{b.id.slice(0, 8)}</span>
+                        {unseenBookingIds.includes(b.id) && (
+                          <span className="rounded-full bg-primary px-1.5 py-0.5 font-sans text-[10px] font-semibold leading-none text-primary-foreground">
+                            New
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="font-medium">{b.guest?.name ?? "—"}</div>
                       <div className="text-xs text-muted-foreground">{b.guest?.phone ?? b.guest?.email ?? ""}</div>
@@ -391,6 +434,7 @@ function BookingsPage() {
       <Drawer open={creating} onClose={() => setCreating(false)} title="New booking">
         <BookingForm
           onSaved={async () => { await refresh(); setCreating(false); }}
+          onCreated={markBookingNew}
           onCancel={() => setCreating(false)}
           onStatusChange={updateStatus}
         />
@@ -498,11 +542,13 @@ function InlineStatusSelect({
 function BookingForm({
   booking,
   onSaved,
+  onCreated,
   onCancel,
   onStatusChange,
 }: {
   booking?: BookingRow;
   onSaved: () => void;
+  onCreated?: (bookingId: string) => void;
   onCancel: () => void;
   onStatusChange: (id: string, s: BookingStatus) => Promise<void>;
 }) {
@@ -615,6 +661,16 @@ function BookingForm({
         if (inserts.length) {
           const { error } = await supabase.from("booking_rooms").insert(inserts);
           if (error) throw error;
+        }
+      }
+
+      if (!isEdit && bookingId) {
+        onCreated?.(bookingId);
+        try {
+          await sendNewBookingEmail({ data: { bookingId } });
+        } catch (notificationError) {
+          console.error("New booking email failed:", notificationError);
+          toast.warning("Booking saved, but the notification email could not be sent.");
         }
       }
 

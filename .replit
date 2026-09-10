@@ -40,3 +40,8 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[userenv]
+
+[userenv.shared]
+RESEND_ADMIN_EMAIL = "salahkhattab491@gmail.com"

@@ -1,0 +1,1 @@
+- [Booking notifications](booking-notifications.md) — unseen badge state is local-only; email details come from the persisted booking and secrets stay server-side.

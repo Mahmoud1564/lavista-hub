@@ -669,17 +669,26 @@ function BookingForm({
         bookingId = data.id;
       }
 
-      // Replace booking_rooms
+      // Replace booking_rooms. The primary booking row still has room_id as a
+      // compatibility fallback, so keep the notification attempt independent
+      // from a junction-table failure.
+      let bookingRoomsError: unknown = null;
       if (bookingId) {
-        await supabase.from("booking_rooms").delete().eq("booking_id", bookingId);
-        const inserts = selectedRoomIds.map((rid) => ({
-          booking_id: bookingId!,
-          room_id: rid,
-          price_per_night: rooms.find((r) => r.id === rid)?.price ?? null,
-        }));
-        if (inserts.length) {
-          const { error } = await supabase.from("booking_rooms").insert(inserts);
-          if (error) throw error;
+        try {
+          const { error: deleteError } = await supabase.from("booking_rooms").delete().eq("booking_id", bookingId);
+          if (deleteError) throw deleteError;
+          const inserts = selectedRoomIds.map((rid) => ({
+            booking_id: bookingId!,
+            room_id: rid,
+            price_per_night: rooms.find((r) => r.id === rid)?.price ?? null,
+          }));
+          if (inserts.length) {
+            const { error } = await supabase.from("booking_rooms").insert(inserts);
+            if (error) throw error;
+          }
+        } catch (error) {
+          bookingRoomsError = error;
+          console.error("Booking room associations failed:", error);
         }
       }
 
@@ -693,6 +702,9 @@ function BookingForm({
         }
       }
 
+      if (bookingRoomsError) {
+        toast.warning("Booking saved, but room associations could not be saved.");
+      }
       toast.success(isEdit ? "Booking updated" : "Booking created");
       onSaved();
     } catch (e: unknown) {

@@ -26,3 +26,9 @@ Resend sender verification is scoped to the account/API key: a domain verified e
 **Why:** A live request using the configured key and a sender on the verified domain returned `403 validation_error` stating that the domain was not verified; the same key cannot list domains because it is restricted to sending.
 
 **How to apply:** If Resend rejects a verified-domain sender, verify the domain in the Resend account that owns the configured key or replace the key through Replit Secrets; do not guess another sender address.
+
+Booking notifications must not be gated exclusively on the optional `booking_rooms` junction write because the primary booking can already be persisted when that write fails.
+
+**Why:** A real booking existed with its primary `room_id` but no junction row, so the old sequence skipped the notification even though enough saved data existed to send it.
+
+**How to apply:** Attempt notification delivery after the primary booking is saved, use the primary-room fallback when junction data is unavailable, and surface junction persistence failures separately.

@@ -58,7 +58,7 @@ function row(label: string, value: string | number): string {
     </tr>`;
 }
 
-const RESEND_FROM = "Lavista Bookings <bookings@avistastay.com>";
+const RESEND_FROM = "Lavista Bookings <bookings@lavistastay.com>";
 
 async function requireStaffUser() {
   const authorization = getRequestHeader("authorization");

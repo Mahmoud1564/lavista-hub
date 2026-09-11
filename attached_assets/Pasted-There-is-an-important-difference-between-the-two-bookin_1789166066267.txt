@@ -1,0 +1,69 @@
+There is an important difference between the two booking creation paths.
+
+### Current behavior
+
+**Bookings created from the Admin Dashboard:**
+
+* Booking is created successfully.
+* Booking notification email is sent correctly.
+* The `New` badge appears correctly.
+
+**Bookings created from the public website:**
+
+* Booking is created successfully and appears in the Dashboard.
+* BUT the booking notification email is NOT sent.
+* The `New` badge does NOT appear.
+
+So the problem is NOT booking creation and NOT Resend itself.
+
+The notification logic appears to be triggered only when a booking is created from the Admin Dashboard, while website bookings are being inserted through a different path.
+
+### What I need you to do
+
+Trace both booking creation flows and compare them.
+
+Find:
+
+1. The exact function/API used when a booking is created from the Admin Dashboard.
+2. The exact function/API used when a booking is created from the public website.
+3. Identify where the Dashboard booking flow triggers:
+
+   * booking notification email
+   * `New` badge / new booking state
+4. Make the public website booking flow trigger the SAME notification behavior after a successful booking.
+
+The desired behavior is:
+
+**Public website booking**
+→ booking successfully saved
+→ same notification/event logic as Dashboard booking
+→ booking notification email sent
+→ booking marked as `New` / unread
+→ Dashboard displays the `New` badge
+
+**Admin Dashboard booking**
+→ keep the existing behavior exactly as it currently works.
+
+### Important
+
+Do NOT duplicate the notification logic unnecessarily.
+
+If possible, extract/reuse the existing shared notification function/event so both booking creation paths use the same logic.
+
+Do NOT change:
+
+* booking database structure
+* existing dashboard booking functionality
+* payment logic
+* room availability logic
+* unrelated UI
+* existing working Dashboard email behavior
+
+Also make sure the notification is triggered ONLY after the booking has been successfully created, so failed bookings don't generate notifications.
+
+Please inspect the actual code and logs, identify why website bookings bypass the notification logic, implement the fix, and test BOTH:
+
+1. A booking created from the Dashboard.
+2. A booking created from the public website.
+
+Both must produce the same `New` badge and notification email behavior.

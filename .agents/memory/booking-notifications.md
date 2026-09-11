@@ -20,3 +20,9 @@ For Node 20 Supabase Realtime, use the `ws` runtime package as the server transp
 **Why:** The supported transport removes the Supabase runtime warning, while the DefinitelyTyped package caused broad unrelated Supabase query type errors.
 
 **How to apply:** Keep the narrow local `ws` module declaration and pass `ws` only when constructing Supabase clients on the server/SSR path.
+
+Resend sender verification is scoped to the account/API key: a domain verified elsewhere is not usable by this project's restricted send-only key.
+
+**Why:** A live request using the configured key and a sender on the verified domain returned `403 validation_error` stating that the domain was not verified; the same key cannot list domains because it is restricted to sending.
+
+**How to apply:** If Resend rejects a verified-domain sender, verify the domain in the Resend account that owns the configured key or replace the key through Replit Secrets; do not guess another sender address.

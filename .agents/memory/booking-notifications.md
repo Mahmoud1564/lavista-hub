@@ -15,6 +15,12 @@ The server-side notification requires `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`
 
 **How to apply:** When debugging server functions, verify Replit environment availability for all server-only Supabase variables separately from browser `VITE_*` variables.
 
+Email delivery also requires the server-only `RESEND_API_KEY` secret alongside the configured `RESEND_ADMIN_EMAIL`.
+
+**Why:** The notification handler validates the Resend key at send time, so a working Supabase client alone does not restore email delivery.
+
+**How to apply:** Check both server secret names before testing booking notifications; never expose either secret to browser code.
+
 For Node 20 Supabase Realtime, use the `ws` runtime package as the server transport; avoid adding `@types/ws`, which introduces global WebSocket type conflicts in this project.
 
 **Why:** The supported transport removes the Supabase runtime warning, while the DefinitelyTyped package caused broad unrelated Supabase query type errors.
